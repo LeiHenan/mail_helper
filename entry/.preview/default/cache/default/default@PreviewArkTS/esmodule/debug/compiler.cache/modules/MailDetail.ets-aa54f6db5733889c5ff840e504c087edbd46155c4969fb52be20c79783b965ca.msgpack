@@ -1,0 +1,533 @@
+Ôr@Ÿªassertions¤code´customTransformCache¬dependencies¢id¤meta±moduleSideEffects¬originalCode±originalSourcemap«resolvedIds®sourcemapChainµsyntheticNamedExportsµtransformDependencies®transformFiles¨cacheAstÔrAÚG…if (!("finalizeConstruction" in ViewPU.prototype)) {
+    Reflect.set(ViewPU.prototype, "finalizeConstruction", () => { });
+}
+import { MockMailRepository } from '../data/MockMailRepository';
+class MailDetail extends ViewPU {
+    constructor(parent, params, __localStorage, elmtId = -1, paramsLambda = undefined, extraInfo) {
+        super(parent, __localStorage, elmtId, extraInfo);
+        if (typeof paramsLambda === "function") {
+            this.paramsGenerator_ = paramsLambda;
+        }
+        this.repository = MockMailRepository.shared();
+        this.__message = new ObservedPropertyObjectPU(undefined, this, "message");
+        this.setInitiallyProvidedValue(params);
+        this.finalizeConstruction();
+    }
+    setInitiallyProvidedValue(params) {
+        if (params.repository !== undefined) {
+            this.repository = params.repository;
+        }
+        if (params.message !== undefined) {
+            this.message = params.message;
+        }
+    }
+    updateStateVars(params) {
+    }
+    purgeVariableDependenciesOnElmtId(rmElmtId) {
+        this.__message.purgeDependencyOnElmtId(rmElmtId);
+    }
+    aboutToBeDeleted() {
+        this.__message.aboutToBeDeleted();
+        SubscriberManager.Get().delete(this.id__());
+        this.aboutToBeDeletedInternal();
+    }
+    get message() {
+        return this.__message.get();
+    }
+    set message(newValue) {
+        this.__message.set(newValue);
+    }
+    aboutToAppear() {
+        const params = this.getUIContext().getRouter().getParams();
+        this.loadMessage(params.mailId);
+    }
+    async loadMessage(messageId) {
+        this.message = await this.repository.getMessage(messageId);
+    }
+    initialRender() {
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Column.create();
+            Column.debugLine("entry/src/main/ets/pages/MailDetail.ets(24:5)", "entry");
+            Column.width('100%');
+            Column.height('100%');
+            Column.backgroundColor('#FFFFFF');
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Row.create();
+            Row.debugLine("entry/src/main/ets/pages/MailDetail.ets(25:7)", "entry");
+            Row.width('100%');
+            Row.padding({ left: 10, right: 10, top: 10 });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Button.createWithLabel('â€¹');
+            Button.debugLine("entry/src/main/ets/pages/MailDetail.ets(26:9)", "entry");
+            Button.width(42);
+            Button.height(42);
+            Button.fontSize(30);
+            Button.fontColor('#263047');
+            Button.backgroundColor(Color.Transparent);
+            Button.onClick(() => this.getUIContext().getRouter().back());
+        }, Button);
+        Button.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Blank.create();
+            Blank.debugLine("entry/src/main/ets/pages/MailDetail.ets(33:9)", "entry");
+        }, Blank);
+        Blank.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Button.createWithLabel(this.message?.isStarred ? 'â˜…' : 'â˜†');
+            Button.debugLine("entry/src/main/ets/pages/MailDetail.ets(34:9)", "entry");
+            Button.width(42);
+            Button.height(42);
+            Button.fontSize(23);
+            Button.fontColor(this.message?.isStarred ? '#FFB33E' : '#687086');
+            Button.backgroundColor(Color.Transparent);
+            Button.onClick(async () => {
+                if (this.message) {
+                    await this.repository.toggleStar(this.message.id);
+                    this.message = await this.repository.getMessage(this.message.id);
+                }
+            });
+        }, Button);
+        Button.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Button.createWithLabel('â‹¯');
+            Button.debugLine("entry/src/main/ets/pages/MailDetail.ets(46:9)", "entry");
+            Button.width(42);
+            Button.height(42);
+            Button.fontSize(24);
+            Button.fontColor('#687086');
+            Button.backgroundColor(Color.Transparent);
+        }, Button);
+        Button.pop();
+        Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            If.create();
+            if (this.message) {
+                this.ifElseBranchUpdateFunction(0, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Scroll.create();
+                        Scroll.debugLine("entry/src/main/ets/pages/MailDetail.ets(57:9)", "entry");
+                        Scroll.layoutWeight(1);
+                        Scroll.scrollBar(BarState.Off);
+                    }, Scroll);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Column.create({ space: 18 });
+                        Column.debugLine("entry/src/main/ets/pages/MailDetail.ets(58:11)", "entry");
+                        Column.padding({ left: 22, right: 22, bottom: 24 });
+                        Column.alignItems(HorizontalAlign.Start);
+                    }, Column);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create(this.message.subject);
+                        Text.debugLine("entry/src/main/ets/pages/MailDetail.ets(59:13)", "entry");
+                        Text.fontSize(25);
+                        Text.fontWeight(FontWeight.Bold);
+                        Text.fontColor('#1D263C');
+                        Text.width('100%');
+                    }, Text);
+                    Text.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Row.create({ space: 12 });
+                        Row.debugLine("entry/src/main/ets/pages/MailDetail.ets(65:13)", "entry");
+                        Row.width('100%');
+                    }, Row);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Stack.create();
+                        Stack.debugLine("entry/src/main/ets/pages/MailDetail.ets(66:15)", "entry");
+                    }, Stack);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Circle.create();
+                        Circle.debugLine("entry/src/main/ets/pages/MailDetail.ets(67:17)", "entry");
+                        Circle.width(48);
+                        Circle.height(48);
+                        Circle.fill('#DDE6FF');
+                    }, Circle);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create(this.message.sender.name.substring(0, 1));
+                        Text.debugLine("entry/src/main/ets/pages/MailDetail.ets(68:17)", "entry");
+                        Text.fontSize(18);
+                        Text.fontWeight(FontWeight.Bold);
+                        Text.fontColor('#3157D5');
+                    }, Text);
+                    Text.pop();
+                    Stack.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Column.create({ space: 3 });
+                        Column.debugLine("entry/src/main/ets/pages/MailDetail.ets(71:15)", "entry");
+                        Column.alignItems(HorizontalAlign.Start);
+                    }, Column);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create(this.message.sender.name);
+                        Text.debugLine("entry/src/main/ets/pages/MailDetail.ets(72:17)", "entry");
+                        Text.fontSize(16);
+                        Text.fontWeight(FontWeight.Medium);
+                        Text.fontColor('#273048');
+                    }, Text);
+                    Text.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create(this.message.sender.address);
+                        Text.debugLine("entry/src/main/ets/pages/MailDetail.ets(73:17)", "entry");
+                        Text.fontSize(13);
+                        Text.fontColor('#858CA0');
+                    }, Text);
+                    Text.pop();
+                    Column.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Blank.create();
+                        Blank.debugLine("entry/src/main/ets/pages/MailDetail.ets(76:15)", "entry");
+                    }, Blank);
+                    Blank.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create(this.message.receivedAt);
+                        Text.debugLine("entry/src/main/ets/pages/MailDetail.ets(77:15)", "entry");
+                        Text.fontSize(13);
+                        Text.fontColor('#858CA0');
+                    }, Text);
+                    Text.pop();
+                    Row.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Divider.create();
+                        Divider.debugLine("entry/src/main/ets/pages/MailDetail.ets(81:13)", "entry");
+                        Divider.color('#ECEEF4');
+                    }, Divider);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create(this.message.plainBody);
+                        Text.debugLine("entry/src/main/ets/pages/MailDetail.ets(83:13)", "entry");
+                        Text.fontSize(16);
+                        Text.lineHeight(26);
+                        Text.fontColor('#30384E');
+                        Text.width('100%');
+                    }, Text);
+                    Text.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        If.create();
+                        if (this.message.hasAttachments) {
+                            this.ifElseBranchUpdateFunction(0, () => {
+                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                    Row.create({ space: 12 });
+                                    Row.debugLine("entry/src/main/ets/pages/MailDetail.ets(90:15)", "entry");
+                                    Row.width('100%');
+                                    Row.padding(14);
+                                    Row.backgroundColor('#F3F5FA');
+                                    Row.borderRadius(14);
+                                }, Row);
+                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                    Text.create('â–§');
+                                    Text.debugLine("entry/src/main/ets/pages/MailDetail.ets(91:17)", "entry");
+                                    Text.fontSize(26);
+                                    Text.fontColor('#3157D5');
+                                }, Text);
+                                Text.pop();
+                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                    Column.create({ space: 3 });
+                                    Column.debugLine("entry/src/main/ets/pages/MailDetail.ets(92:17)", "entry");
+                                    Column.alignItems(HorizontalAlign.Start);
+                                }, Column);
+                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                    Text.create('è¯„å®¡ææ–™.pdf');
+                                    Text.debugLine("entry/src/main/ets/pages/MailDetail.ets(93:19)", "entry");
+                                    Text.fontSize(15);
+                                    Text.fontWeight(FontWeight.Medium);
+                                    Text.fontColor('#30384E');
+                                }, Text);
+                                Text.pop();
+                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                    Text.create('1.8 MB');
+                                    Text.debugLine("entry/src/main/ets/pages/MailDetail.ets(94:19)", "entry");
+                                    Text.fontSize(12);
+                                    Text.fontColor('#8B91A3');
+                                }, Text);
+                                Text.pop();
+                                Column.pop();
+                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                    Blank.create();
+                                    Blank.debugLine("entry/src/main/ets/pages/MailDetail.ets(96:17)", "entry");
+                                }, Blank);
+                                Blank.pop();
+                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                    Text.create('ä¸‹è½½');
+                                    Text.debugLine("entry/src/main/ets/pages/MailDetail.ets(97:17)", "entry");
+                                    Text.fontSize(14);
+                                    Text.fontColor('#3157D5');
+                                }, Text);
+                                Text.pop();
+                                Row.pop();
+                            });
+                        }
+                        else {
+                            this.ifElseBranchUpdateFunction(1, () => {
+                            });
+                        }
+                    }, If);
+                    If.pop();
+                    Column.pop();
+                    Scroll.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Row.create({ space: 12 });
+                        Row.debugLine("entry/src/main/ets/pages/MailDetail.ets(111:9)", "entry");
+                        Row.padding({ left: 20, right: 20, top: 10, bottom: 16 });
+                        Row.backgroundColor('#FFFFFF');
+                    }, Row);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Button.createWithLabel('å›å¤');
+                        Button.debugLine("entry/src/main/ets/pages/MailDetail.ets(112:11)", "entry");
+                        Button.layoutWeight(1);
+                        Button.height(46);
+                        Button.fontColor('#3157D5');
+                        Button.backgroundColor('#E9EEFF');
+                        Button.onClick(() => this.getUIContext().getRouter().pushUrl({ url: 'pages/Compose', params: {
+                                accountId: this.message?.accountId,
+                                to: this.message?.sender.address,
+                                subject: `Re: ${this.message?.subject ?? ''}`
+                            } }).catch(() => { }));
+                    }, Button);
+                    Button.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Button.createWithLabel('è½¬å‘');
+                        Button.debugLine("entry/src/main/ets/pages/MailDetail.ets(122:11)", "entry");
+                        Button.layoutWeight(1);
+                        Button.height(46);
+                        Button.fontColor('#FFFFFF');
+                        Button.backgroundColor('#3157D5');
+                        Button.onClick(() => this.getUIContext().getRouter().pushUrl({ url: 'pages/Compose', params: {
+                                accountId: this.message?.accountId,
+                                subject: `Fwd: ${this.message?.subject ?? ''}`,
+                                body: this.message?.plainBody
+                            } }).catch(() => { }));
+                    }, Button);
+                    Button.pop();
+                    Row.pop();
+                });
+            }
+            else {
+                this.ifElseBranchUpdateFunction(1, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Column.create({ space: 12 });
+                        Column.debugLine("entry/src/main/ets/pages/MailDetail.ets(136:9)", "entry");
+                        Column.layoutWeight(1);
+                        Column.width('100%');
+                        Column.justifyContent(FlexAlign.Center);
+                    }, Column);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        LoadingProgress.create();
+                        LoadingProgress.debugLine("entry/src/main/ets/pages/MailDetail.ets(137:11)", "entry");
+                        LoadingProgress.width(38);
+                        LoadingProgress.height(38);
+                        LoadingProgress.color('#3157D5');
+                    }, LoadingProgress);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create('æ­£åœ¨åŠ è½½é‚®ä»¶');
+                        Text.debugLine("entry/src/main/ets/pages/MailDetail.ets(138:11)", "entry");
+                        Text.fontSize(14);
+                        Text.fontColor('#81889B');
+                    }, Text);
+                    Text.pop();
+                    Column.pop();
+                });
+            }
+        }, If);
+        If.pop();
+        Column.pop();
+    }
+    rerender() {
+        this.updateDirtyElements();
+    }
+    static getEntryName() {
+        return "MailDetail";
+    }
+}
+registerNamedRoute(() => new MailDetail(undefined, {}), "", { bundleName: "com.mailhelper.app", moduleName: "entry", pagePath: "pages/MailDetail", pageFullPath: "entry/src/main/ets/pages/MailDetail", integratedHsp: "false", moduleType: "followWithHap" });
+//# sourceMappingURL=MailDetail.js.mapÂ‘ÙL/Users/admin/work/mail_helper/entry/src/main/ets/data/MockMailRepository.etsÙE/Users/admin/work/mail_helper/entry/src/main/ets/pages/MailDetail.etsÔrB›ªmoduleName±isLocalDependency¯isNodeEntryFile§pkgPath±belongProjectPath§pkgNameªpkgVersion±dependencyPkgInfo°belongModulePath§checker¬shouldEmitJs¥entryÃÂÙ#/Users/admin/work/mail_helper/entry½/Users/admin/work/mail_helper¥entry¥1.0.0Ô  Ù#/Users/admin/work/mail_helper/entryÔrCÜ ®¬getNodeCount²getIdentifierCount®getSymbolCount¬getTypeCountµgetInstantiationCountµgetRelationCacheSizes±isUndefinedSymbol±isArgumentsSymbol¯isUnknownSymbol¯getMergedSymbol®getDiagnostics´getGlobalDiagnostics´getRecursionIdentity¶getUnmatchedProperties¹getTypeOfSymbolAtLocation¯getTypeOfSymbolÙ(getSymbolsOfParameterPropertyDeclaration·getDeclaredTypeOfSymbol³getPropertiesOfType±getPropertyOfTypeÙ"getPrivateIdentifierPropertyOfType·getTypeOfPropertyOfType²getIndexInfoOfType³getIndexInfosOfTypeºgetIndexInfosOfIndexSymbol³getSignaturesOfType²getIndexTypeOfType¬getIndexType¬getBaseTypes¸getBaseTypeOfLiteralType®getWidenedType³getTypeFromTypeNode°getParameterTypeÙ$getParameterIdentifierNameAtPosition¸getPromisedTypeOfPromise®getAwaitedType¸getReturnTypeOfSignature®isNullableType¯getNullableType²getNonNullableType²getNonOptionalType°getTypeArguments®typeToTypeNodeÙ$indexInfoToIndexSignatureDeclaration¿signatureToSignatureDeclaration²symbolToEntityName²symbolToExpression¬symbolToNodeÙ!symbolToTypeParameterDeclarations¼symbolToParameterDeclarationºtypeParameterToDeclaration±getSymbolsInScope³getSymbolAtLocation·getIndexInfosAtLocationÙ!getShorthandAssignmentValueSymbolÙ#getExportSpecifierLocalTargetSymbol·getExportSymbolOfSymbol±getTypeAtLocationÙ tryGetTypeAtLocationWithoutCheckºgetTypeOfAssignmentPatternÙ*getPropertySymbolOfDestructuringAssignment±signatureToString¬typeToString®symbolToStringµtypePredicateToString®writeSignature©writeType«writeSymbol²writeTypePredicate¼getAugmentedPropertiesOfType®getRootSymbols²getSymbolOfExpando±getContextualTypeÙ(getContextualTypeForObjectLiteralElementÙ#getContextualTypeForArgumentAtIndexÙ getContextualTypeForJsxAttribute²isContextSensitiveÙ!getTypeOfPropertyOfContextualTypeµgetFullyQualifiedNameÙ#tryGetResolvedSignatureWithoutCheck´getResolvedSignatureÙ/getResolvedSignatureForStringLiteralCompletionsÙ$getResolvedSignatureForSignatureHelpµgetExpandedParameters¹hasEffectiveRestParameterºcontainsArgumentsReference°getConstantValueµisValidPropertyAccessÙ#isValidPropertyAccessForCompletions»getSignatureFromDeclarationºisImplementationOfOverload¹getImmediateAliasedSymbol°getAliasedSymbol¯getEmitResolver²getExportsOfModule¿getExportsAndPropertiesOfModuleÙ forEachExportAndPropertyOfModule¯getSymbolWalker±getAmbientModules¹getJsxIntrinsicTagNamesAt³isOptionalParameter»tryGetMemberInModuleExportsÙ(tryGetMemberInModuleExportsAndProperties´tryFindAmbientModuleÙ(tryFindAmbientModuleWithoutAugmentations¯getApparentType¬getUnionType²isTypeAssignableTo³createAnonymousType¯createSignature¬createSymbol¯createIndexInfoªgetAnyType­getStringType­getNumberType±createPromiseType¯createArrayType¹getElementTypeOfArrayType®getBooleanType¬getFalseType«getTrueType«getVoidType°getUndefinedType«getNullType¯getESSymbolType¬getNeverType¯getOptionalType®getPromiseType²getPromiseLikeType´getAsyncIterableType²isSymbolAccessible«isArrayType«isTupleType¯isArrayLikeTypeÙ#isTypeInvalidDueToUnionDiscriminantºgetExactOptionalProperties¿getAllPossiblePropertiesOfTypesÙ(getSuggestedSymbolForNonexistentPropertyÙ#getSuggestionForNonexistentPropertyÙ,getSuggestedSymbolForNonexistentJSXAttributeÙ&getSuggestedSymbolForNonexistentSymbolÙ!getSuggestionForNonexistentSymbolÙ&getSuggestedSymbolForNonexistentModuleÙ!getSuggestionForNonexistentExportÙ+getSuggestedSymbolForNonexistentClassMember·getBaseConstraintOfType»getDefaultFromTypeParameter«resolveName¯getJsxNamespaceµgetJsxFragmentFactory¸getAccessibleSymbolChain»getTypePredicateOfSignature¹resolveExternalModuleName»resolveExternalModuleSymbol°tryGetThisTypeAt¹getTypeArgumentConstraint¸getSuggestionDiagnostics¸runWithCancellationTokenÙ3getLocalTypeParametersOfClassOrInterfaceOrTypeAlias´isDeclarationVisible´isPropertyAccessible»getTypeOnlyAliasDeclaration¿getMemberOverrideModifierStatusÙ!isTypeParameterPossiblyReferenced²getConstEnumRelate´clearConstEnumRelateµdeleteConstEnumRelateÙ$getTypeArgumentsForResolvedSignatureµgetCheckedSourceFilesÙ"collectHaveTsNoCheckFilesForLinter·clearQualifiedNameCache®isStaticRecord²isStaticSourceFile³createIntrinsicTypeÔ  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  ÃÃÚËimport { MockMailRepository } from '../data/MockMailRepository';
+import { MailMessage } from '../model/MailModels';
+
+interface MailDetailParams {
+  mailId: string;
+}
+
+@Entry
+@Component
+struct MailDetail {
+  private repository: MockMailRepository = MockMailRepository.shared();
+  @State private message?: MailMessage = undefined;
+
+  aboutToAppear(): void {
+    const params: MailDetailParams = this.getUIContext().getRouter().getParams() as MailDetailParams;
+    this.loadMessage(params.mailId);
+  }
+
+  private async loadMessage(messageId: string): Promise<void> {
+    this.message = await this.repository.getMessage(messageId);
+  }
+
+  build() {
+    Column() {
+      Row() {
+        Button('â€¹')
+          .width(42)
+          .height(42)
+          .fontSize(30)
+          .fontColor('#263047')
+          .backgroundColor(Color.Transparent)
+          .onClick(() => this.getUIContext().getRouter().back())
+        Blank()
+        Button(this.message?.isStarred ? 'â˜…' : 'â˜†')
+          .width(42)
+          .height(42)
+          .fontSize(23)
+          .fontColor(this.message?.isStarred ? '#FFB33E' : '#687086')
+          .backgroundColor(Color.Transparent)
+          .onClick(async () => {
+            if (this.message) {
+              await this.repository.toggleStar(this.message.id);
+              this.message = await this.repository.getMessage(this.message.id);
+            }
+          })
+        Button('â‹¯')
+          .width(42)
+          .height(42)
+          .fontSize(24)
+          .fontColor('#687086')
+          .backgroundColor(Color.Transparent)
+      }
+      .width('100%')
+      .padding({ left: 10, right: 10, top: 10 })
+
+      if (this.message) {
+        Scroll() {
+          Column({ space: 18 }) {
+            Text(this.message.subject)
+              .fontSize(25)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#1D263C')
+              .width('100%')
+
+            Row({ space: 12 }) {
+              Stack() {
+                Circle().width(48).height(48).fill('#DDE6FF')
+                Text(this.message.sender.name.substring(0, 1))
+                  .fontSize(18).fontWeight(FontWeight.Bold).fontColor('#3157D5')
+              }
+              Column({ space: 3 }) {
+                Text(this.message.sender.name).fontSize(16).fontWeight(FontWeight.Medium).fontColor('#273048')
+                Text(this.message.sender.address).fontSize(13).fontColor('#858CA0')
+              }
+              .alignItems(HorizontalAlign.Start)
+              Blank()
+              Text(this.message.receivedAt).fontSize(13).fontColor('#858CA0')
+            }
+            .width('100%')
+
+            Divider().color('#ECEEF4')
+
+            Text(this.message.plainBody)
+              .fontSize(16)
+              .lineHeight(26)
+              .fontColor('#30384E')
+              .width('100%')
+
+            if (this.message.hasAttachments) {
+              Row({ space: 12 }) {
+                Text('â–§').fontSize(26).fontColor('#3157D5')
+                Column({ space: 3 }) {
+                  Text('è¯„å®¡ææ–™.pdf').fontSize(15).fontWeight(FontWeight.Medium).fontColor('#30384E')
+                  Text('1.8 MB').fontSize(12).fontColor('#8B91A3')
+                }.alignItems(HorizontalAlign.Start)
+                Blank()
+                Text('ä¸‹è½½').fontSize(14).fontColor('#3157D5')
+              }
+              .width('100%')
+              .padding(14)
+              .backgroundColor('#F3F5FA')
+              .borderRadius(14)
+            }
+          }
+          .padding({ left: 22, right: 22, bottom: 24 })
+          .alignItems(HorizontalAlign.Start)
+        }
+        .layoutWeight(1)
+        .scrollBar(BarState.Off)
+
+        Row({ space: 12 }) {
+          Button('å›å¤')
+            .layoutWeight(1)
+            .height(46)
+            .fontColor('#3157D5')
+            .backgroundColor('#E9EEFF')
+            .onClick(() => this.getUIContext().getRouter().pushUrl({ url: 'pages/Compose', params: {
+              accountId: this.message?.accountId,
+              to: this.message?.sender.address,
+              subject: `Re: ${this.message?.subject ?? ''}`
+            } }).catch(() => {}))
+          Button('è½¬å‘')
+            .layoutWeight(1)
+            .height(46)
+            .fontColor('#FFFFFF')
+            .backgroundColor('#3157D5')
+            .onClick(() => this.getUIContext().getRouter().pushUrl({ url: 'pages/Compose', params: {
+              accountId: this.message?.accountId,
+              subject: `Fwd: ${this.message?.subject ?? ''}`,
+              body: this.message?.plainBody
+            } }).catch(() => {}))
+        }
+        .padding({ left: 20, right: 20, top: 10, bottom: 16 })
+        .backgroundColor('#FFFFFF')
+      } else {
+        Column({ space: 12 }) {
+          LoadingProgress().width(38).height(38).color('#3157D5')
+          Text('æ­£åœ¨åŠ è½½é‚®ä»¶').fontSize(14).fontColor('#81889B')
+        }
+        .layoutWeight(1)
+        .width('100%')
+        .justifyContent(FlexAlign.Center)
+      }
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor('#FFFFFF')
+  }
+}
+ÀÔrD‘º../data/MockMailRepositoryÔrE—ªassertions¨external¢id¤meta±moduleSideEffectsªresolvedByµsyntheticNamedExportsAÂÙL/Users/admin/work/mail_helper/entry/src/main/ets/data/MockMailRepository.etsAÃªoh-resolveÂ“ÔrF–§version¤fileªsourceRoot§sources¥names¨mappings­MailDetail.js ‘®MailDetail.etsÜK˜”    ”  ”	  	”  ”  ”#  #”?  ?”Ì@  Ì@’” 	” 	‘”  •” 
++”, 
+=”- 
+>”3 
+ÌD”5 
+ÌF’”6 )”? 2‘” ’” ” ’” ” ’” ” Ÿ” ” 
+” ” %” )” *”( 6”* 8”+ 9”4 ÌB”6 ÌD”7 ÌE”Ì@ ÌN”ÌB Ìd”ÌC Ìeš” ” ” 	” ” ” ”  ”& "”' #”( $’” ” –” 
+”	 ”
+ ” ” ” -Ÿ” ” ” 	” ” ” ”! ”" ”, (”- )”7 3”8 4”ÌA =”ÌB >”ÌC ?’” ” ‘” ’” ” 
+–” ” 
+” Ì” Ì
+” Ì” Ì–” ” 
+” Ì‘” Ì‘” Ì‘”  Ì‘–” ” 
+” Ì’”" Ì’”# Ì’”, Ì’’” ” 	–” ” 	” 4” 4” 4” 4Ü ” ” 	” 5” 5” 5” 5” 5”  5”" 5”$ 5”) 5 ”+ 5"”- 5$”/ 5&”2 5)”4 5+”6 5-”8 5/”” ” ”# ”& –” ” ” ” ” ” –” ” ” ” ” ” –” ” ” ” ” ” –” ” ” ” ” ”& ˜” ” ” ”" ”# ”(  ”) !”4 ,Ü ” ” ” ” ” ” ”  ”! ”% ”& ”2 *”4 ,”5 -”> 6”Ì@ 8”ÌA 9”ÌE =”ÌG ?’” ” ’”  ”  ’”  ”  Ü ” !” !”# !”' !”( !”/ !”1 !”: !&”; !'”< !(”= !)”Ì@ !,”ÌA !-”ÌB !.”ÌC !/”ÌF !2–” !” !” "” "” "” "–” !” !” #” #” #” #–” !” !” $” $” $” $Ü ” !” !” %” %” %”! %”" %”) %!”+ %#”4 %,”5 %-”6 %.”7 %/”Ì@ %8”ÌA %9”ÌB %:”ÌC %;”ÌL %ÌD˜” !” !” &”" &”# &”( & ”) &!”4 &,˜” !” !” '” '” '”  '”$ '”& '–” (” (” (” (”  (”" (Ÿ” )” )” )” )”) )#”* )$”4 ).”5 )/”9 )3”: )4”ÌA );”ÌB )<”ÌD )>”ÌE )?”ÌF )Ì@Ü ” *” *” *”  *”# *”) *#”- *'”. *(”8 *2”9 *3”ÌC *=”ÌD *>”ÌH *ÌB”ÌI *ÌC”ÌP *ÌJ”ÌQ *ÌK”ÌS *ÌM”ÌT *ÌN”ÌU *ÌO‘” +’” ,
+” ,’” !” !”” -” -”# -”& -–” -” -” .” .” .” .–” -” -” /” /” /” /–” -” -” 0” 0” 0” 0–” -” -” 1” 1” 1”& 1˜” -” -” 2”" 2”# 2”( 2 ”) 2!”4 2,’” -” -’” ” 	–” 7” 7
+” 7” 7” 7” 7’” 8” 8–” 8” 8” Ìk	”+ Ìk”, Ìk”- Ìk˜” 8” 8” Ìl	”( Ìl”) Ìl”1 Ìl”2 Ìl”5 Ìl˜” 9
+” 9”& 9”( 9”- 9”/ 9”1 9”3 9Ü ” 9
+” 9” Ìh”& Ìh”' Ìh”) Ìh”- Ìh”/ Ìh”1 Ìh”3 Ìh”8 Ìh$”: Ìh&”< Ìh(”> Ìh*”ÌD Ìh0”ÌF Ìh2”ÌH Ìh4”ÌJ Ìh6˜” 9
+” 9” Ìi”) Ìi”* Ìi”9 Ìi%”: Ìi&”? Ìi+˜” :” :”$ :”( :”) :”0 :”1 :”8 :%–” :” :” ;”% ;”& ;”( ;˜” :” :” <”' <”( <”2 <$”3 <%”7 <)–” :” :” =”& =”' =”0 ="–” :” :” >”" >”# >”) >’” :” :˜” Ì@” Ì@”# Ì@”% Ì@”* Ì@”, Ì@”. Ì@”0 Ì@–” Ì@” Ì@” ÌN”! ÌN”" ÌN”( ÌN’” ÌA” ÌA’” ÌB” ÌB–” ÌB” ÌB” ÌB”$ ÌB”% ÌB”' ÌB!–” ÌB” ÌB” ÌB#”% ÌB)”& ÌB*”( ÌB,–” ÌB” ÌB” ÌB.”# ÌB2”$ ÌB3”- ÌB<Ü ” ÌC” ÌC”$ ÌC”( ÌC”) ÌC”0 ÌC!”1 ÌC"”7 ÌC(”8 ÌC)”< ÌC-”= ÌC.”ÌF ÌC7”ÌG ÌC8”ÌH ÌC9”ÌJ ÌC;”ÌK ÌC<”ÌL ÌC=–” ÌC” ÌC” ÌD”% ÌD”& ÌD”( ÌD˜” ÌC” ÌC” ÌD ”' ÌD*”( ÌD+”2 ÌD5”3 ÌD6”7 ÌD:–” ÌC” ÌC” ÌD<”& ÌDÌE”' ÌDÌF”0 ÌDÌO’” ÌC” ÌC’” ÌA” ÌA˜” ÌF” ÌF”& ÌF”( ÌF”- ÌF”/ ÌF”0 ÌF”2 ÌF!˜” ÌF” ÌF” ÌJ”) ÌJ”* ÌJ”9 ÌJ)”: ÌJ*”? ÌJ/š” ÌG” ÌG”$ ÌG”( ÌG”) ÌG”0 ÌG!”1 ÌG"”7 ÌG(”8 ÌG)”< ÌG-–” ÌG” ÌG” ÌG/”% ÌG7”& ÌG8”( ÌG:˜” ÌG” ÌG” ÌG<”' ÌGÌF”( ÌGÌG”2 ÌGÌQ”3 ÌGÌR”9 ÌGÌX–” ÌG” ÌG” ÌGÌZ”& ÌGÌc”' ÌGÌd”0 ÌGÌm’” ÌG” ÌGš” ÌH” ÌH”$ ÌH”( ÌH”) ÌH”0 ÌH!”1 ÌH"”7 ÌH(”8 ÌH)”? ÌH0–” ÌH” ÌH” ÌH2”% ÌH:”& ÌH;”( ÌH=–” ÌH” ÌH” ÌH?”& ÌHÌH”' ÌHÌI”0 ÌHÌR’” ÌH” ÌH’” ÌF” ÌF’” ÌK” ÌK’” ÌK” ÌK˜” ÌL” ÌL”$ ÌL”( ÌL”) ÌL”0 ÌL”1 ÌL ”; ÌL*–” ÌL” ÌL” ÌL,”% ÌL4”& ÌL5”( ÌL7–” ÌL” ÌL” ÌL9”& ÌLÌB”' ÌLÌC”0 ÌLÌL’” ÌL” ÌL’” Ì@” Ì@’” ÌP” ÌP–” ÌP” ÌP”  ÌP”% ÌP”& ÌP”/ ÌP%˜” ÌR” ÌR”$ ÌR”( ÌR”) ÌR”0 ÌR”1 ÌR”: ÌR'–” ÌR” ÌR” ÌS”% ÌS”& ÌS”( ÌS–” ÌR” ÌR” ÌT”' ÌT”( ÌT”* ÌT–” ÌR” ÌR” ÌU”& ÌU”' ÌU”0 ÌU"–” ÌR” ÌR” ÌV”" ÌV”# ÌV”) ÌV’” ÌR” ÌR˜” ÌX” ÌX”  ÌX”! ÌX”( ÌX”) ÌX”7 ÌX+”9 ÌX-˜”$ ÌY”' ÌY”/ ÌY”1 ÌY”6 ÌY”8 ÌY”: ÌY”< ÌY–”$ ÌY”' ÌY”( Ìb”- Ìb”. Ìb”4 Ìb–”$ ÌY”' ÌY”( Ìc”/ Ìc”0 Ìc”2 Ìc–”$ ÌY”' ÌY”( Ìd”7 Ìd”8 Ìd”ÌA Ìd(–”$ ÌY”' ÌY”( Ìe”4 Ìe”5 Ìe”7 Ìe””$ ÌZ”( ÌZ”0 ÌZ”3 ÌZ–”$ ÌZ”( ÌZ”) ÌZ”1 ÌZ"”2 ÌZ#”4 ÌZ%–”$ ÌZ”( ÌZ”) ÌZ'”2 ÌZ0”3 ÌZ1”< ÌZ:’”  ÌZ”$ ÌZ˜”$ Ì[”* Ì[”2 Ì[”4 Ì[”9 Ì[”; Ì[ ”< Ì[!”> Ì[#˜”$ Ì[”* Ì[”+ Ì^”5 Ì^”6 Ì^”ÌE Ì^,”ÌF Ì^-”ÌK Ì^2””$ Ì\”( Ì\”0 Ì\”: Ì\!–”$ Ì\”( Ì\”) Ì\#”1 Ì\+”2 Ì\,”4 Ì\.˜”$ Ì\”( Ì\”) Ì\0”3 Ì\:”4 Ì\;”> Ì\ÌE”? Ì\ÌF”ÌE Ì\ÌL–”$ Ì\”( Ì\”) Ì\ÌN”2 Ì\ÌW”3 Ì\ÌX”< Ì\Ìa’”  Ì\”$ Ì\””$ Ì]”( Ì]”0 Ì]”8 Ì]–”$ Ì]”( Ì]”) Ì]!”1 Ì])”2 Ì]*”4 Ì],–”$ Ì]”( Ì]”) Ì].”2 Ì]7”3 Ì]8”< Ì]ÌA’”  Ì]”$ Ì]’”  Ì[”& Ì[’”$ Ì_”) Ì_’”  Ì_”% Ì_””$ Ì`”( Ì`”0 Ì`”4 Ì`–”$ Ì`”( Ì`”) Ì`”1 Ì`#”2 Ì`$”4 Ì`&–”$ Ì`”( Ì`”) Ì`(”2 Ì`1”3 Ì`2”< Ì`;’”  Ì`”$ Ì`’”  ÌY”# ÌY‘” Ìf‘” Ìf’” 9
+” 9’” 8” 8˜” Ìn” Ìn”# Ìn”% Ìn”* Ìn”, Ìn”. Ìn”0 ÌnÜ ” Ìn” Ìn” Ì„	”# Ì„”$ Ì„”& Ì„”* Ì„”, Ì„”. Ì„”0 Ì„”5 Ì„"”7 Ì„$”9 Ì„&”; Ì„(”> Ì„+”Ì@ Ì„-”ÌB Ì„/”ÌD Ì„1”ÌJ Ì„7”ÌL Ì„9”ÌN Ì„;”ÌP Ì„=–” Ìn” Ìn” Ì…	”+ Ì…”, Ì…”5 Ì…"”” Ìo
+” Ìo”/ Ìo”3 Ìo–” Ìo
+” Ìo” Ìp”+ Ìp”, Ìp”- Ìp–” Ìo
+” Ìo” Ìq”% Ìq”& Ìq”( Ìq–” Ìo
+” Ìo” Ìr”( Ìr”) Ìr”2 Ìr –” Ìo
+” Ìo” Ìs”. Ìs”/ Ìs”8 Ìs&Ü ” Ìo
+” Ìo” Ìt”& Ìt”' Ìt”* Ìt”, Ìt”- Ìt”1 Ìt”2 Ìt ”> Ìt,”Ì@ Ìt.”ÌA Ìt/”ÌJ Ìt8”ÌL Ìt:”ÌM Ìt;”ÌT ÌtÌB”ÌU ÌtÌC”ÌW ÌtÌE”ÌZ ÌtÌH”Ì\ ÌtÌJ”Ìk ÌtÌY”Ìm ÌtÌ[”Ìs ÌtÌa”Ìu ÌtÌc˜”  Ìu”) Ìu”+ Ìu”/ Ìu”0 Ìu”7 Ìu%”9 Ìu'”ÌB Ìu0š”  Ìv”" Ìv”$ Ìv”( Ìv”) Ìv”0 Ìv”2 Ìv ”8 Ìv&”9 Ìv'”Ì@ Ìv.œ”  Ìw”' Ìw”) Ìw”0 Ìw”4 Ìw"”5 Ìw#”< Ìw*”> Ìw,”ÌE Ìw3”ÌI Ìw7”ÌK Ìw9”ÌM Ìw;›” Ìx” Ìx”  Ìx”! Ìx”& Ìx”' Ìx”* Ìx”, Ìx”/ Ìx”0 Ìx”1 Ìx ’” Ìo
+” Ìo”” Ìy
+” Ìy”/ Ìy”3 Ìy–” Ìy
+” Ìy” Ìz”+ Ìz”, Ìz”- Ìz–” Ìy
+” Ìy” Ì{”% Ì{”& Ì{”( Ì{–” Ìy
+” Ìy” Ì|”( Ì|”) Ì|”2 Ì| –” Ìy
+” Ìy” Ì}”. Ì}”/ Ì}”8 Ì}&Ü ” Ìy
+” Ìy” Ì~”& Ì~”' Ì~”* Ì~”, Ì~”- Ì~”1 Ì~”2 Ì~ ”> Ì~,”Ì@ Ì~.”ÌA Ì~/”ÌJ Ì~8”ÌL Ì~:”ÌM Ì~;”ÌT Ì~ÌB”ÌU Ì~ÌC”ÌW Ì~ÌE”ÌZ Ì~ÌH”Ì\ Ì~ÌJ”Ìk Ì~ÌY”Ìm Ì~Ì[”Ìs Ì~Ìa”Ìu Ì~Ìc˜”  Ì”) Ì”+ Ì”/ Ì”0 Ì”7 Ì%”9 Ì'”ÌB Ì0œ”  Ì€”' Ì€”) Ì€”1 Ì€”5 Ì€#”6 Ì€$”= Ì€+”? Ì€-”ÌF Ì€4”ÌJ Ì€8”ÌL Ì€:”ÌN Ì€<˜”  Ì”$ Ì”& Ì”* Ì”+ Ì”2 Ì ”4 Ì"”= Ì+›” Ì‚” Ì‚”  Ì‚”! Ì‚”& Ì‚”' Ì‚”* Ì‚”, Ì‚”/ Ì‚”0 Ì‚”1 Ì‚ ’” Ìy
+” Ìy’” Ìn” Ìn‘” Ì†‘” Ì†˜” Ì‡” Ì‡”& Ì‡”( Ì‡”- Ì‡”/ Ì‡”1 Ì‡”3 Ì‡–” Ì‡” Ì‡” Ì‹	”+ Ì‹”, Ì‹”- Ì‹–” Ì‡” Ì‡” ÌŒ	”$ ÌŒ”% ÌŒ”+ ÌŒ˜” Ì‡” Ì‡” Ì	”- Ì”. Ì”7 Ì!”8 Ì"”> Ì(’” Ìˆ
+”' Ìˆ–” Ìˆ
+”' Ìˆ”( Ìˆ”- Ìˆ!”. Ìˆ"”0 Ìˆ$–” Ìˆ
+”' Ìˆ”( Ìˆ&”. Ìˆ,”/ Ìˆ-”1 Ìˆ/–” Ìˆ
+”' Ìˆ”( Ìˆ1”- Ìˆ6”. Ìˆ7”7 ÌˆÌ@”” Ì‰
+” Ì‰”$ Ì‰”, Ì‰–” Ì‰
+” Ì‰” Ì‰”% Ì‰!”& Ì‰"”( Ì‰$–” Ì‰
+” Ì‰” Ì‰&”& Ì‰/”' Ì‰0”0 Ì‰9’” Ì‰
+” Ì‰’” Ì‡” Ì‡‘” Ì’” ” 
+‘” Ì“ÔrG–§version¤file§sources®sourcesContent¥names¨mappingsÀ‘À‘ÀÜT‘”    ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”  	 ‘”  
+ ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”    ‘”  ! ‘”  " ‘”  # ‘”  $ ‘”  % ‘”  & ‘”  ' ‘”  ( ‘”  ) ‘”  * ‘”  + ‘”  , ‘”  - ‘”  . ‘”  / ‘”  0 ‘”  1 ‘”  2 ‘”  3 ‘”  4 ‘”  5 ‘”  6 ‘”  7 ‘”  8 ‘”  9 ‘”  : ‘”  ; ‘”  < ‘”  = ‘”  > ‘”  ? ‘”  Ì@ ‘”  ÌA ‘”  ÌB ‘”  ÌC ‘”  ÌD ‘”  ÌE ‘”  ÌF ‘”  ÌG ‘”  ÌH ‘”  ÌI ‘”  ÌJ ‘”  ÌK ‘”  ÌL ‘”  ÌM ‘”  ÌN ‘”  ÌO ‘”  ÌP ‘”  ÌQ ‘”  ÌR ‘”  ÌS ‘”  ÌT ‘”  ÌU ‘”  ÌV ‘”  ÌW ‘”  ÌX ‘”  ÌY ‘”  ÌZ ‘”  Ì[ ‘”  Ì\ ‘”  Ì] ‘”  Ì^ ‘”  Ì_ ‘”  Ì` ‘”  Ìa ‘”  Ìb ‘”  Ìc ‘”  Ìd ‘”  Ìe ‘”  Ìf ‘”  Ìg ‘”  Ìh ‘”  Ìi ‘”  Ìj ‘”  Ìk ‘”  Ìl ‘”  Ìm ‘”  Ìn ‘”  Ìo ‘”  Ìp ‘”  Ìq ‘”  Ìr ‘”  Ìs ‘”  Ìt ‘”  Ìu ‘”  Ìv ‘”  Ìw ‘”  Ìx ‘”  Ìy ‘”  Ìz ‘”  Ì{ ‘”  Ì| ‘”  Ì} ‘”  Ì~ ‘”  Ì ‘”  Ì€ ‘”  Ì ‘”  Ì‚ ‘”  Ìƒ ‘”  Ì„ ‘”  Ì… ‘”  Ì† ‘”  Ì‡ ‘”  Ìˆ ‘”  Ì‰ ‘”  ÌŠ ‘”  Ì‹ ‘”  ÌŒ ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì‘ ‘”  Ì’ ‘”  Ì“ ‘”  Ì” ‘”  Ì• ‘”  Ì– ‘”  Ì— ‘”  Ì˜ ‘”  Ì™ ‘”  Ìš ‘”  Ì› ‘”  Ìœ ‘”  Ì ‘”  Ì ‘”  ÌŸ ‘”  Ì  ‘”  Ì¡ ‘”  Ì¢ ‘”  Ì£ ‘”  Ì¤ ‘”  Ì¥ ‘”  Ì¦ ‘”  Ì§ ‘”  Ì¨ ‘”  Ì© ‘”  Ìª ‘”  Ì« ‘”  Ì¬ ‘”  Ì­ ‘”  Ì® ‘”  Ì¯ ‘”  Ì° ‘”  Ì± ‘”  Ì² ‘”  Ì³ ‘”  Ì´ ‘”  Ìµ ‘”  Ì¶ ‘”  Ì· ‘”  Ì¸ ‘”  Ì¹ ‘”  Ìº ‘”  Ì» ‘”  Ì¼ ‘”  Ì½ ‘”  Ì¾ ‘”  Ì¿ ‘”  ÌÀ ‘”  ÌÁ ‘”  ÌÂ ‘”  ÌÃ ‘”  ÌÄ ‘”  ÌÅ ‘”  ÌÆ ‘”  ÌÇ ‘”  ÌÈ ‘”  ÌÉ ‘”  ÌÊ ‘”  ÌË ‘”  ÌÌ ‘”  ÌÍ ‘”  ÌÎ ‘”  ÌÏ ‘”  ÌĞ ‘”  ÌÑ ‘”  ÌÒ ‘”  ÌÓ ‘”  ÌÔ ‘”  ÌÕ ‘”  ÌÖ ‘”  Ì× ‘”  ÌØ ‘”  ÌÙ ‘”  ÌÚ ‘”  ÌÛ ‘”  ÌÜ ‘”  Ìİ ‘”  ÌŞ ‘”  Ìß ‘”  Ìà ‘”  Ìá ‘”  Ìâ ‘”  Ìã ‘”  Ìä ‘”  Ìå ‘”  Ìæ ‘”  Ìç ‘”  Ìè ‘”  Ìé ‘”  Ìê ‘”  Ìë ‘”  Ìì ‘”  Ìí ‘”  Ìî ‘”  Ìï ‘”  Ìğ ‘”  Ìñ ‘”  Ìò ‘”  Ìó ‘”  Ìô ‘”  Ìõ ‘”  Ìö ‘”  Ì÷ ‘”  Ìø ‘”  Ìù ‘”  Ìú ‘”  Ìû ‘”  Ìü ‘”  Ìı ‘”  Ìş ‘”  Ìÿ ‘”  Í  ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í	 ‘”  Í
+ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í  ‘”  Í! ‘”  Í" ‘”  Í# ‘”  Í$ ‘”  Í% ‘”  Í& ‘”  Í' ‘”  Í( ‘”  Í) ‘”  Í* ‘”  Í+ ‘”  Í, ‘”  Í- ‘”  Í. ‘”  Í/ ‘”  Í0 ‘”  Í1 ‘”  Í2 ‘”  Í3 ‘”  Í4 ‘”  Í5 ‘”  Í6 ‘”  Í7 ‘”  Í8 ‘”  Í9 ‘”  Í: ‘”  Í; ‘”  Í< ‘”  Í= ‘”  Í> ‘”  Í? ‘”  Í@ ‘”  ÍA ‘”  ÍB ‘”  ÍC ‘”  ÍD ‘”  ÍE ‘”  ÍF ‘”  ÍG ‘”  ÍH ‘”  ÍI ‘”  ÍJ ‘”  ÍK ‘”  ÍL ‘”  ÍM ‘”  ÍN ‘”  ÍO ‘”  ÍP ‘”  ÍQ ‘”  ÍR ‘”  ÍS ÔrH’§missing¦pluginÃ¦genAbcÂÔ  ÔrI”²dynamicImportCache¹exportAllDeclarationCache»exportNamedDeclarationCache«importCache‘ÔrJ•¤type¥start£endªspecifiers¦source±ImportDeclarationÌ€ÌÀ‘ÔrK•¤type¥start£end¨imported¥local¯ImportSpecifierÌ‰Ì›ÔrL”¤type¥start£end¤nameªIdentifierÌ‰Ì›²MockMailRepositoryLªIdentifierÌ‰Ì›²MockMailRepositoryÔrM•¤type¥start£end¥value£raw§LiteralÌ£Ì¿º../data/MockMailRepository¼'../data/MockMailRepository'

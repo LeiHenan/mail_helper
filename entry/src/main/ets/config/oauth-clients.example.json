@@ -1,0 +1,10 @@
+{
+  "gmail": {
+    "clientId": "your-google-oauth-client-id",
+    "clientSecret": "your-google-oauth-client-secret"
+  },
+  "outlook": {
+    "clientId": "your-microsoft-oauth-client-id",
+    "clientSecret": ""
+  }
+}

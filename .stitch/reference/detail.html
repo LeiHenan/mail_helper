@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+
+<html class="light" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>邮件详情 - MailFlow</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                        },
+                        indigo: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            300: '#a5b4fc',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81',
+                        }
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.5rem",
+                        md: "0.75rem",
+                        lg: "1rem",
+                        xl: "1.25rem",
+                        "2xl": "1.5rem",
+                        full: "9999px"
+                    },
+                    fontFamily: {
+                        headline: ["Public Sans", "system-ui", "sans-serif"],
+                        display: ["Public Sans", "system-ui", "sans-serif"],
+                        body: ["Public Sans", "system-ui", "sans-serif"],
+                        label: ["Public Sans", "system-ui", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Public Sans', system-ui, -apple-system, sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        .pt-safe { padding-top: env(safe-area-inset-top); }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-slate-50 border-b border-slate-200/60 pt-safe">
+<div class="flex items-center justify-between px-4 h-14 w-full max-w-screen-xl mx-auto">
+<button class="w-10 h-10 flex items-center justify-center text-slate-700 hover:bg-slate-100 rounded-full transition-colors active:opacity-70">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline text-lg font-semibold tracking-tight text-slate-900 truncate flex-1 text-center mx-2">邮件详情</h1>
+<div class="flex items-center space-x-1">
+<button class="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-full transition-colors active:opacity-70">
+<span class="material-symbols-outlined">archive</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-full transition-colors active:opacity-70">
+<span class="material-symbols-outlined">delete</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-full transition-colors active:opacity-70">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 w-full max-w-screen-md mx-auto pt-[calc(3.5rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))] px-4 sm:px-6">
+<!-- Header Section -->
+<section class="py-5">
+<!-- Account Capsule -->
+<div class="inline-flex items-center space-x-1.5 px-3 py-1 bg-slate-100 border border-slate-200/60 rounded-full mb-4">
+<span class="material-symbols-outlined text-slate-500" style="font-size: 14px;">work</span>
+<span class="font-label text-xs font-medium text-slate-600">工作账号 (work_account@163.com)</span>
+</div>
+<!-- Subject -->
+<div class="flex items-start justify-between mb-5 gap-4">
+<h2 class="font-headline text-2xl font-bold text-slate-900 leading-snug">Q4 季度产品进度评审及资源规划讨论</h2>
+<button class="mt-1 flex-shrink-0 text-slate-400 hover:text-amber-400 transition-colors">
+<span class="material-symbols-outlined" style="font-size: 28px;">star</span>
+</button>
+</div>
+<!-- Sender Info -->
+<div class="flex items-start space-x-3 bg-white p-4 rounded-xl border border-slate-200/50">
+<div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+<span class="font-headline font-semibold text-indigo-700 text-sm">LX</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-baseline justify-between mb-0.5">
+<h3 class="font-headline font-semibold text-slate-900 truncate">林小明</h3>
+<span class="font-label text-xs text-slate-400 whitespace-nowrap ml-2">10月24日 10:30</span>
+</div>
+<div class="font-body text-sm text-slate-500 truncate mb-1">lin.xiaoming@company.com</div>
+<div class="flex items-center space-x-1 text-xs text-slate-400">
+<span>至</span>
+<span class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-medium">我</span>
+<span class="material-symbols-outlined" style="font-size: 14px;">expand_more</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Body Section -->
+<section class="py-2 mb-6">
+<div class="prose prose-slate prose-sm sm:prose-base max-w-none font-body text-slate-700 leading-relaxed">
+<p>团队成员大家好，</p>
+<p>随着第四季度的深入，我们的核心产品线即将迎来关键里程碑。为了确保按时交付并保证质量，我计划在下周二下午召开一次全面的进度评审会议。</p>
+<p>本次会议的主要议题包括：<br/>
+                1. 各模块当前开发进度与目标核对。<br/>
+                2. 识别并解决可能存在的研发阻塞点。<br/>
+                3. 根据最新市场反馈调整后续几个Sprint的资源倾斜。</p>
+<p>请大家在会前仔细阅读附件中的季度报告草案和进度追踪表，如有补充意见，请在周一前通过邮件反馈给我，以便我更新会议议程。</p>
+<p>期待大家的参与。</p>
+<p>祝好，<br/>
+                林小明<br/>
+                产品总监</p>
+</div>
+<!-- Blockquote (History) -->
+<div class="mt-6 border-l-2 border-indigo-200 pl-4 py-1">
+<div class="text-sm text-slate-400 mb-2 font-label">2023年10月23日 16:45，王大卫 写道：</div>
+<div class="text-sm text-slate-600 line-clamp-2">
+                    收到，我会提前准备好前端组的进度汇报。关于资源分配，我们确实需要后端团队在下个迭代给予更多接口支持。
+                </div>
+<button class="text-indigo-600 text-sm font-medium mt-1 flex items-center hover:text-indigo-700 transition-colors">
+<span>展开完整历史记录</span>
+<span class="material-symbols-outlined" style="font-size: 16px;">expand_more</span>
+</button>
+</div>
+</section>
+<!-- Attachments Section -->
+<section class="pt-4 border-t border-slate-200/60">
+<h4 class="font-headline text-sm font-semibold text-slate-800 mb-3 flex items-center">
+<span class="material-symbols-outlined mr-1.5 text-slate-400" style="font-size: 18px;">attachment</span>
+                附件 (2)
+            </h4>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+<!-- Attachment 1 -->
+<div class="flex items-center p-3 bg-white border border-slate-200/60 rounded-xl hover:bg-slate-50 transition-colors group cursor-pointer">
+<div class="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0 mr-3">
+<span class="material-symbols-outlined text-red-500" style="font-size: 20px;">picture_as_pdf</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="font-headline text-sm font-medium text-slate-800 truncate group-hover:text-indigo-600 transition-colors">2023Q4报告_V2.pdf</div>
+<div class="font-label text-xs text-slate-400 mt-0.5">2.4 MB</div>
+</div>
+<div class="flex items-center space-x-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity">
+<button class="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
+<span class="material-symbols-outlined" style="font-size: 20px;">download</span>
+</button>
+</div>
+</div>
+<!-- Attachment 2 -->
+<div class="flex items-center p-3 bg-white border border-slate-200/60 rounded-xl hover:bg-slate-50 transition-colors group cursor-pointer">
+<div class="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0 mr-3">
+<span class="material-symbols-outlined text-emerald-500" style="font-size: 20px;">table</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="font-headline text-sm font-medium text-slate-800 truncate group-hover:text-indigo-600 transition-colors">项目进度追踪_1024.xlsx</div>
+<div class="font-label text-xs text-slate-400 mt-0.5">856 KB</div>
+</div>
+<div class="flex items-center space-x-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity">
+<button class="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
+<span class="material-symbols-outlined" style="font-size: 20px;">download</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-slate-50/95 backdrop-blur-md border-t border-slate-200/60 rounded-t-xl pb-safe shadow-[0_-1px_3px_rgba(0,0,0,0.02)]">
+<div class="flex justify-around items-center px-6 py-2 max-w-screen-md mx-auto">
+<!-- 回复 -->
+<button class="flex flex-col items-center justify-center text-indigo-600 bg-indigo-50/50 rounded-xl px-4 py-1 active:scale-95 transition-transform duration-200 flex-1">
+<span class="material-symbols-outlined mb-0.5" style="font-size: 24px;">reply</span>
+<span class="font-label text-xs font-medium">回复</span>
+</button>
+<!-- 回复全部 -->
+<button class="flex flex-col items-center justify-center text-slate-500 px-4 py-1 hover:text-indigo-500 active:scale-95 transition-transform duration-200 flex-1">
+<span class="material-symbols-outlined mb-0.5" style="font-size: 24px;">reply_all</span>
+<span class="font-label text-xs font-medium">回复全部</span>
+</button>
+<!-- 转发 -->
+<button class="flex flex-col items-center justify-center text-slate-500 px-4 py-1 hover:text-indigo-500 active:scale-95 transition-transform duration-200 flex-1">
+<span class="material-symbols-outlined mb-0.5" style="font-size: 24px;">forward</span>
+<span class="font-label text-xs font-medium">转发</span>
+</button>
+</div>
+</nav>
+</body></html>

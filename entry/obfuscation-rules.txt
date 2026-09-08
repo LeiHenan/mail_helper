@@ -1,0 +1,3 @@
+# Keep model names while protocol serialization is under development.
+-keep class com.mailhelper.** { *; }
+

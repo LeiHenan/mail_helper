@@ -1,0 +1,13 @@
+.idea/
+.hvigor/
+.ohpm/
+.sdk/
+.harmony-sdk/
+build/
+**/build/
+local.properties
+oh_modules/
+**/oh_modules/
+*.hap
+*.hsp
+entry/src/main/ets/config/oauth-clients.json

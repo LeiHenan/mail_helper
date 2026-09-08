@@ -1,0 +1,8 @@
+{
+  "string": [
+    { "name": "module_desc", "value": "多账户邮箱助手" },
+    { "name": "entry_ability_desc", "value": "邮箱助手主界面" },
+    { "name": "entry_ability_label", "value": "邮箱助手" }
+  ]
+}
+

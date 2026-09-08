@@ -1,0 +1,11 @@
+{
+  "src": [
+    "pages/Index",
+    "pages/MailDetail",
+    "pages/Compose",
+    "pages/Accounts",
+    "pages/AddAccount",
+    "pages/SettingsDetail",
+    "pages/AccountDetail"
+  ]
+}
