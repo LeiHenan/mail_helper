@@ -7,7 +7,7 @@
 - 统一收件箱：常驻搜索栏、全部/未读/星标/附件筛选、日期分组、下拉刷新、滑动归档与删除（5 秒内可撤销）
 - 邮件详情：清洗后的 HTML / 纯文本正文、附件打开、已读与星标
 - 写邮件、回复、转发、草稿、附件选择
-- 多邮箱账户管理：QQ、163、Gmail、Outlook 自动配置，支持授权码与 OAuth 2.0 PKCE
+- 多邮箱账户管理：QQ、163、Gmail、Outlook 自动配置，支持授权码与 OAuth 2.0 PKCE；Gmail 支持应用专用密码或 OAuth 登录
 - 真实收发链路：IMAP 增量同步、SMTP 发送，附件落盘到应用沙箱
 - 本地持久化：ArkData RDB（`mail_helper.db`，当前版本 8），`LocalMailRepository` 是唯一数据源
 - 凭证安全：HUKS AES-256-CBC 加密后存入 Preferences
@@ -80,6 +80,8 @@ Gmail 和 Outlook 的 OAuth 客户端参数统一维护在本地配置文件：
 ```
 
 Gmail（桌面应用类型）和 Outlook（公共客户端）都使用带 PKCE 的授权码流程，不需要也不应配置 Client Secret。详细的注册步骤见 [docs/oauth-setup.md](docs/oauth-setup.md)。客户端配置最终会进入 HAP，不能作为真正的密钥保管方案。
+
+Gmail 也可以完全不配置这个文件：在添加账户向导第 2 步顶部把登录方式切到「应用专用密码」，用 Google 账号生成的应用专用密码登录即可。Outlook 只有 OAuth 一种方式（Microsoft 已关闭基本认证）。
 
 ## 收发与同步
 

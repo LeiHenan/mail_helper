@@ -35,7 +35,7 @@ MailSendService ────────► SmtpClient  ──► ProtocolSocket
 - `Compose`：新建、回复、转发、草稿、附件选择。
 - `Accounts`：账户列表、同步开关、最近同步时间、进入设置。
 - `AccountDetail`：服务器设置查看与修改、探测结果。
-- `AddAccount`：邮箱地址自动发现、手动配置、授权码或 OAuth 登录。
+- `AddAccount`：邮箱地址自动发现、手动配置、授权码、应用专用密码（Gmail）或 OAuth 登录。
 - `SettingsDetail`：邮件列表、滑动手势、通知、同步、隐私与安全、外观、帮助等分节设置。
 
 ### 公共组件（common/）

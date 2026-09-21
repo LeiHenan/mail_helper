@@ -50,7 +50,7 @@ export const EMAIL_PROVIDERS: EmailProviderConfig[] = [
       AuthenticationMethod.OAUTH2),
     new MailServerSettings(MailProtocol.SMTP, 'smtp.gmail.com', 587, ConnectionSecurity.STARTTLS,
       AuthenticationMethod.OAUTH2),
-    'https://accounts.google.com', 'Gmail 使用 OAuth 2.0 登录，客户端不会接触邮箱密码。'
+    'https://accounts.google.com', 'Gmail 支持应用专用密码或 OAuth 2.0 登录，两种方式都可在第 2 步选择。'
   ),
   new EmailProviderConfig(
     EmailProviderType.OUTLOOK, 'Outlook', 'O', '#0078D4', AuthType.OAUTH_PKCE,

@@ -16,6 +16,12 @@ import { showToast } from '../common/Toast';
 
 const DOMAIN: number = 0x0003;
 
+// Gmail 支持两条登录路径：应用专用密码（无需注册 OAuth 应用）与 OAuth 2.0 PKCE。
+enum GmailLoginMode {
+  APP_PASSWORD = 'app_password',
+  OAUTH = 'oauth'
+}
+
 @Entry
 @Component
 struct AddAccount {
@@ -36,6 +42,7 @@ struct AddAccount {
   @State private outgoingPort: string = '465';
   @State private connectionStatus: string = '';
   @State private isConnecting: boolean = false;
+  @State private gmailLoginMode: GmailLoginMode = GmailLoginMode.APP_PASSWORD;
   private awaitingOAuthReturn: boolean = false;
   private oauthPageHidden: boolean = false;
   private deferredToast: string = '';
@@ -64,6 +71,36 @@ struct AddAccount {
       return port === 993 ? ConnectionSecurity.TLS : ConnectionSecurity.STARTTLS;
     }
     return port === 465 ? ConnectionSecurity.TLS : ConnectionSecurity.STARTTLS;
+  }
+
+  private securityLabel(protocol: MailProtocol, port: number): string {
+    return this.securityForPort(protocol, port) === ConnectionSecurity.TLS ? 'SSL/TLS' : 'STARTTLS';
+  }
+
+  private incomingEndpointText(): string {
+    return `${this.incomingHost}:${this.incomingPort} · ` +
+      this.securityLabel(MailProtocol.IMAP, Number.parseInt(this.incomingPort));
+  }
+
+  private outgoingEndpointText(): string {
+    return `${this.outgoingHost}:${this.outgoingPort} · ` +
+      this.securityLabel(MailProtocol.SMTP, Number.parseInt(this.outgoingPort));
+  }
+
+  // OAuth 已配置时默认走 OAuth，未配置时默认走应用专用密码；用户可在第 2 步手动切换。
+  private defaultGmailLoginMode(): GmailLoginMode {
+    return isOAuthProviderConfigured(EmailProviderType.GMAIL) ?
+      GmailLoginMode.OAUTH : GmailLoginMode.APP_PASSWORD;
+  }
+
+  // 只有 Gmail 提供密码登录：Outlook 已关闭基本认证，只保留 OAuth。
+  private usesAppPassword(): boolean {
+    return this.selectedProvider === EmailProviderType.GMAIL &&
+      this.gmailLoginMode === GmailLoginMode.APP_PASSWORD;
+  }
+
+  private usesOAuth(): boolean {
+    return findProvider(this.selectedProvider).authType === AuthType.OAUTH_PKCE && !this.usesAppPassword();
   }
 
   private connectionFailure(label: string, settings: MailServerSettings, detail: string): string {
@@ -112,6 +149,10 @@ struct AddAccount {
     return true;
   }
 
+  aboutToAppear(): void {
+    this.gmailLoginMode = this.defaultGmailLoginMode();
+  }
+
   onPageShow(): void {
     this.reportOAuthReturn();
   }
@@ -122,9 +163,9 @@ struct AddAccount {
     }
   }
 
+  // OAuth 配置缺失只影响 OAuth 模式：Gmail 走应用专用密码时按钮不受影响。
   private oauthSetupMissing(): boolean {
-    return findProvider(this.selectedProvider).authType === AuthType.OAUTH_PKCE &&
-      !isOAuthProviderConfigured(this.selectedProvider);
+    return this.usesOAuth() && !isOAuthProviderConfigured(this.selectedProvider);
   }
 
   // OAuth 授权在系统浏览器里进行，等待期间的提示用户在浏览器中看不到。
@@ -172,18 +213,30 @@ struct AddAccount {
     }
   }
 
+  // 应用专用密码复用发现到的端点，只把认证方式换成密码，让同步/发件全链路走 LOGIN。
+  private passwordSettings(source: MailServerSettings): MailServerSettings {
+    return new MailServerSettings(source.protocol, source.host, source.port, source.security,
+      AuthenticationMethod.PASSWORD, this.email.trim());
+  }
+
   private resolveServerSettings(): AccountServerSettings | undefined {
     if (!this.manualSetup && this.selectedProvider !== EmailProviderType.CUSTOM) {
       const discovered: DiscoveryResult = this.discovery.discover(this.email, this.selectedProvider);
       if (!discovered.settings) {
         this.connectionStatus = discovered.errorMessage;
+        return discovered.settings;
       }
-      return discovered.settings;
+      if (!this.usesAppPassword()) {
+        return discovered.settings;
+      }
+      return new AccountServerSettings(discovered.settings.provider, discovered.settings.email,
+        this.passwordSettings(discovered.settings.incoming),
+        this.passwordSettings(discovered.settings.outgoing));
     }
     const incomingPort: number = Number.parseInt(this.incomingPort);
     const outgoingPort: number = Number.parseInt(this.outgoingPort);
-    const authentication: AuthenticationMethod = findProvider(this.selectedProvider).authType ===
-      AuthType.OAUTH_PKCE ? AuthenticationMethod.OAUTH2 : AuthenticationMethod.PASSWORD;
+    const authentication: AuthenticationMethod = this.usesOAuth() ?
+      AuthenticationMethod.OAUTH2 : AuthenticationMethod.PASSWORD;
     const incoming: MailServerSettings = new MailServerSettings(MailProtocol.IMAP,
       this.incomingHost.trim(), incomingPort, this.securityForPort(MailProtocol.IMAP, incomingPort),
       authentication,
@@ -199,6 +252,10 @@ struct AddAccount {
     const provider: EmailProviderConfig = findProvider(this.selectedProvider);
     if (provider.authType === AuthType.AUTHORIZATION_CODE && this.secret.length === 0) {
       showToast('请输入邮箱授权码');
+      return;
+    }
+    if (this.usesAppPassword() && this.secret.length === 0) {
+      showToast('请输入应用专用密码');
       return;
     }
     this.isConnecting = true;
@@ -222,7 +279,7 @@ struct AddAccount {
       }
       let storedCredential: string = this.secret;
       let loginCredential: string = this.secret;
-      if (provider.authType === AuthType.OAUTH_PKCE) {
+      if (this.usesOAuth()) {
         if (!isOAuthProviderConfigured(provider.type)) {
           this.connectionStatus = `${provider.name} 尚未配置 OAuth Client ID，请先完成 OAuth 配置`;
           showToast(this.connectionStatus);
@@ -344,6 +401,8 @@ struct AddAccount {
       this.manualSetup = provider.type === EmailProviderType.CUSTOM;
       this.email = '';
       this.connectionStatus = '';
+      // 切换服务商后登录方式回到默认值，避免带着上一个服务商的选择进入第 2 步。
+      this.gmailLoginMode = this.defaultGmailLoginMode();
       this.step = 1;
     })
   }
@@ -429,6 +488,65 @@ struct AddAccount {
     .alignItems(HorizontalAlign.Start)
   }
 
+  // Gmail 登录方式选择：两段式胶囊选择器，样式与页面卡片一致。
+  @Builder
+  private gmailLoginModeOption(mode: GmailLoginMode, title: string, subtitle: string) {
+    Column({ space: 2 }) {
+      Text(title).fontSize(14).fontWeight(FontWeight.Bold)
+        .fontColor(this.gmailLoginMode === mode ? $r('app.color.onPrimary') : $r('app.color.onSurface'))
+      Text(subtitle).fontSize(11).maxLines(1)
+        .fontColor(this.gmailLoginMode === mode ?
+          $r('app.color.onPrimary') : $r('app.color.onSurfaceVariant'))
+    }
+    .layoutWeight(1).padding({ top: 8, bottom: 8 })
+    .backgroundColor(this.gmailLoginMode === mode ? $r('app.color.primary') : Color.Transparent)
+    .borderRadius(ThunderbirdTheme.controlRadius - 2)
+    .onClick(() => {
+      this.gmailLoginMode = mode;
+      // 密码与 OAuth 令牌不能混用，切换方式时清空已输入的凭证。
+      this.secret = '';
+    })
+  }
+
+  @Builder
+  private gmailLoginModeSelector() {
+    Row({ space: 4 }) {
+      this.gmailLoginModeOption(GmailLoginMode.APP_PASSWORD, '应用专用密码', '无需配置，推荐')
+      this.gmailLoginModeOption(GmailLoginMode.OAUTH, 'OAuth 登录', '需配置 Client ID')
+    }
+    .width('100%').padding(4)
+    .backgroundColor($r('app.color.surfaceLow'))
+    .border({ width: 1, color: $r('app.color.cardBorder') })
+    .borderRadius(ThunderbirdTheme.controlRadius)
+  }
+
+  @Builder
+  private appPasswordCard() {
+    Column({ space: 10 }) {
+      Row({ space: 10 }) {
+        Image($r('app.media.ic_lock')).width(20).height(20).objectFit(ImageFit.Contain)
+          .fillColor($r('app.color.primary'))
+        Text('使用 Google 应用专用密码登录').layoutWeight(1).fontSize(14).fontWeight(FontWeight.Bold)
+          .fontColor($r('app.color.onSurface'))
+      }.width('100%')
+      Text('1. 打开 Google 账号 →「安全性」，开启两步验证。')
+        .width('100%').fontSize(12).lineHeight(18).fontColor($r('app.color.onSurfaceVariant'))
+      Text('2. 在两步验证页面底部选择「应用专用密码」，输入名称（例如 邮箱助手）后生成。')
+        .width('100%').fontSize(12).lineHeight(18).fontColor($r('app.color.onSurfaceVariant'))
+      Text('3. 复制生成的 16 位密码填到下面，它只用于本应用登录 IMAP/SMTP，可随时在 Google 账号中删除。')
+        .width('100%').fontSize(12).lineHeight(18).fontColor($r('app.color.onSurfaceVariant'))
+      Text('4. 还需在 Gmail「设置 → 转发和 POP/IMAP」中启用 IMAP，否则连接收件服务器会失败。')
+        .width('100%').fontSize(12).lineHeight(18).fontColor($r('app.color.onSurfaceVariant'))
+      Text('这种方式无需注册 OAuth 应用，用账号密码也无法登录，必须使用这里生成的密码。')
+        .width('100%').fontSize(12).lineHeight(18).fontColor($r('app.color.onSurfaceVariant'))
+    }
+    .width('100%').padding(14)
+    .backgroundColor($r('app.color.surfaceLow'))
+    .border({ width: 1, color: $r('app.color.cardBorder') })
+    .borderRadius(8)
+    .alignItems(HorizontalAlign.Start)
+  }
+
   @Builder
   private configurationStep() {
     Scroll() {
@@ -436,6 +554,10 @@ struct AddAccount {
         Text(this.manualSetup ? '服务器设置' : '发现的配置')
           .width('100%').fontSize(22).fontWeight(FontWeight.Bold).fontColor($r('app.color.onSurface'))
         Text(this.email).width('100%').fontSize(14).fontColor($r('app.color.onSurfaceVariant'))
+
+        if (this.selectedProvider === EmailProviderType.GMAIL) {
+          this.gmailLoginModeSelector()
+        }
 
         Row({ space: 10 }) {
           Image(this.selectedProvider === EmailProviderType.CUSTOM ? $r('app.media.ic_warning') :
@@ -449,7 +571,11 @@ struct AddAccount {
         .width('100%').padding(14).backgroundColor($r('app.color.surfaceContainer')).borderRadius(8)
 
         this.outlinedInput('显示名称', this.displayName, '你的名字', (value: string) => this.displayName = value)
-        if (findProvider(this.selectedProvider).authType === AuthType.OAUTH_PKCE) {
+        if (this.usesAppPassword()) {
+          this.appPasswordCard()
+          this.outlinedInput('应用专用密码', this.secret, '输入 16 位应用专用密码',
+            (value: string) => this.secret = value, true)
+        } else if (findProvider(this.selectedProvider).authType === AuthType.OAUTH_PKCE) {
           if (isOAuthProviderConfigured(this.selectedProvider)) {
             Text(this.selectedProvider === EmailProviderType.GMAIL ?
               '将通过 Google 安全登录，应用不会读取或保存 Gmail 登录密码。' :
@@ -469,17 +595,16 @@ struct AddAccount {
           this.serverRow('发件服务器', this.outgoingHost, this.outgoingPort, false)
         } else {
           Column({ space: 8 }) {
-            Text(`收件服务器  ${this.incomingHost}:${this.incomingPort}`)
+            Text(`收件服务器  ${this.incomingEndpointText()}`)
               .width('100%').fontSize(13).fontColor($r('app.color.onSurface'))
-            Text(`发件服务器  ${this.outgoingHost}:${this.outgoingPort}`)
+            Text(`发件服务器  ${this.outgoingEndpointText()}`)
               .width('100%').fontSize(13).fontColor($r('app.color.onSurface'))
             Button('编辑配置').height(44).fontSize(13).fontColor($r('app.color.primary'))
               .backgroundColor(Color.Transparent).onClick(() => this.manualSetup = true)
           }.width('100%').padding(14).backgroundColor($r('app.color.surfaceLow')).borderRadius(8)
         }
 
-        Button(this.isConnecting ? '正在验证…' :
-          (findProvider(this.selectedProvider).authType === AuthType.OAUTH_PKCE ? '使用 OAuth 登录' : '连接'))
+        Button(this.isConnecting ? '正在验证…' : (this.usesOAuth() ? '使用 OAuth 登录' : '连接'))
           .width('100%').height(50).fontSize(15).fontWeight(FontWeight.Bold)
           .fontColor(this.oauthSetupMissing() ? $r('app.color.outline') : $r('app.color.onPrimary'))
           .backgroundColor(this.oauthSetupMissing() ? $r('app.color.surfaceHigh') : $r('app.color.primary'))
