@@ -33,8 +33,6 @@
 
 **运行到真机**：`build-profile.json5` 的 `signingConfigs` 为空，构建产物是未签名 HAP，无法直接安装。在 DevEco Studio 中打开「File → Project Structure → Signing Configs」，勾选 **Automatically generate signature**，按提示登录华为开发者账号，等待自动签名完成后即可运行到真机。
 
-仅 debug 构建的首次启动会写入一组示例账户和邮件用于演示（一次性标记 `seeded`，删光账户后不会复活），可以在账户详情页删除；release 构建不写入演示数据。
-
 ## 项目结构
 
 ```text
@@ -44,7 +42,7 @@ entry/src/main/ets
 ├── data/          MailRepository、LocalMailRepository、附件落盘、待推送队列边界
 ├── entryability/  应用入口（外观恢复、隐私窗口、后台任务注册）
 ├── model/         账户、邮件、服务器与提供商配置
-├── pages/         收件箱、详情、写信、账户列表、账户详情、添加账户、设置详情
+├── pages/         收件箱、详情、写信、账户列表、账户详情、添加账户、设置详情、Gmail 设置指南
 ├── security/      HUKS 凭证保险库
 ├── service/       OAuth、IMAP/SMTP、MIME、同步与通知
 ├── theme/         尺寸与圆角常量

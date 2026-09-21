@@ -6,6 +6,7 @@
     "pages/Accounts",
     "pages/AddAccount",
     "pages/SettingsDetail",
+    "pages/GmailGuide",
     "pages/AccountDetail"
   ]
 }

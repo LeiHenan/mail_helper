@@ -16,12 +16,18 @@ export class AttachmentFileStore {
     this.root = filesDir.length > 0 ? `${filesDir}/attachments` : '';
   }
 
-  async writeMessageAttachments(messageId: string, payloads: MailAttachmentPayload[]): Promise<string[]> {
+  // keepExistingFiles 为 true 时不先清空目录：目录里的历史附件文件必须活到数据库事务提交。
+  // 事务回滚后旧附件行仍然有效（指向旧文件），提交前删掉旧目录会让它们变成“uri 非空但文件没了”；
+  // 不再被引用的旧文件由调用方在提交后通过 pruneMessageAttachments 删除。
+  async writeMessageAttachments(messageId: string, payloads: MailAttachmentPayload[],
+    keepExistingFiles: boolean = false): Promise<string[]> {
     if (this.root.length === 0) {
       return payloads.map((_payload: MailAttachmentPayload): string => '');
     }
     const directory: string = this.messageDirectory(messageId);
-    await this.removeDirectory(directory);
+    if (!keepExistingFiles) {
+      await this.removeDirectory(directory);
+    }
     const uris: string[] = [];
     let directoryCreated: boolean = false;
     for (let index: number = 0; index < payloads.length; index++) {
@@ -51,25 +57,39 @@ export class AttachmentFileStore {
     }
     const name: string = this.safeFileName(fileName);
     const source: fileIo.File = await fileIo.open(sourceUri, fileIo.OpenMode.READ_ONLY);
-    let bytes: Uint8Array = new Uint8Array(0);
-    let readSize: number = 0;
+    const directory: string = this.messageDirectory(messageId);
+    const stamp: number = Date.now();
+    const path: string = `${directory}/${stamp}_${name}`;
+    let size: number = 0;
     try {
       const info: fileIo.Stat = await fileIo.stat(source.fd);
       if (info.size > MAX_IMPORT_BYTES) {
         throw new Error(`附件 ${name} 超过 20 MB`);
       }
-      const buffer: ArrayBuffer = new ArrayBuffer(info.size);
-      readSize = await fileIo.read(source.fd, buffer);
-      bytes = new Uint8Array(buffer, 0, readSize);
+      await fileIo.mkdir(directory, true);
+      // 整份复制而不是单次 read：read 只保证“最多读满缓冲区”，大文件一次读不满会被静默截断，
+      // 而截断后的字节数又被当成附件大小写进库里。copyFile 的入参在 SDK 声明里写的是
+      // “Path or FD of the file to copy”，所以用已经打开的 fd 做源（open 明确支持 URI 入参），
+      // 目标用自家沙箱路径，不依赖 copyFile 是否接受 URI 这种文档未确认的行为。
+      try {
+        await fileIo.copyFile(source.fd, path);
+      } catch (error) {
+        // 复制中断可能留下半个目标文件：清掉它，否则后续按 uri 会读出一个不完整的附件。
+        await this.removeAttachmentFile(`file://${path}`);
+        if (error instanceof Error) {
+          throw error;
+        }
+        throw new Error(`附件 ${name} 导入失败`);
+      }
+      size = (await fileIo.stat(path)).size;
+      if (size !== info.size) {
+        await this.removeAttachmentFile(`file://${path}`);
+        throw new Error(`附件 ${name} 复制不完整（${size}/${info.size} 字节）`);
+      }
     } finally {
       await fileIo.close(source);
     }
-    const directory: string = this.messageDirectory(messageId);
-    await fileIo.mkdir(directory, true);
-    const stamp: number = Date.now();
-    const path: string = `${directory}/${stamp}_${name}`;
-    await this.writeFile(path, bytes);
-    return new MailAttachment(this.nextAttachmentId(), `file://${path}`, name, mimeType, readSize);
+    return new MailAttachment(this.nextAttachmentId(), `file://${path}`, name, mimeType, size);
   }
 
   // 迁移某封邮件自己的附件文件到另一封邮件的目录（优先重命名，失败退回复制后删除），返回改写后的
@@ -123,6 +143,41 @@ export class AttachmentFileStore {
     }
     for (let index: number = 0; index < messageIds.length; index++) {
       await this.removeDirectory(this.messageDirectory(messageIds[index]));
+    }
+  }
+
+  // 只保留 keepUris 指向的文件，删掉目录里其余条目。用于“先落盘、事务后提交”的写入路径：
+  // 提交成功后用新附件 uri 调一次，清掉本轮不再引用的旧文件；回滚后用旧附件 uri 调一次，
+  // 清掉本轮新写、旧附件行并不认的文件（旧文件必须留下，否则回滚后旧行会指向空文件）。
+  // 整目录删除只适合目录里所有文件都属于本轮写入的场景（新邮件）。
+  async pruneMessageAttachments(messageId: string, keepUris: string[]): Promise<void> {
+    if (this.root.length === 0) {
+      return;
+    }
+    const directory: string = this.messageDirectory(messageId);
+    let entries: string[] = [];
+    try {
+      if (!await fileIo.access(directory)) {
+        return;
+      }
+      entries = await fileIo.listFile(directory);
+    } catch (error) {
+      hilog.warn(DOMAIN, 'AttachmentFileStore', '读取附件目录失败 %{public}s：%{public}s', directory, `${error}`);
+      return;
+    }
+    const keep: Set<string> = new Set<string>();
+    for (let index: number = 0; index < keepUris.length; index++) {
+      const path: string = this.localPath(keepUris[index]);
+      if (path.length > 0) {
+        keep.add(path);
+      }
+    }
+    for (let index: number = 0; index < entries.length; index++) {
+      const path: string = this.entryPath(directory, entries[index]);
+      if (path.length === 0 || keep.has(path)) {
+        continue;
+      }
+      await this.removeEntry(path);
     }
   }
 

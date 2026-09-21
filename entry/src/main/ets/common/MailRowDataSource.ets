@@ -6,6 +6,7 @@ import { MailListRow, MailRowKind } from './MailListRow';
 export class MailRowDataSource implements IDataSource {
   private listeners: DataChangeListener[] = [];
   private rows: MailListRow[] = [];
+  // 定位索引按邮件 id 建（不是行 key）：行 key 里含已读 / 星标状态，单条刷新后会变，id 不会。
   private indexByMessageId: Map<string, number> = new Map<string, number>();
 
   totalCount(): number {

@@ -1,6 +1,5 @@
 import { Context } from '@kit.AbilityKit';
 import { relationalStore } from '@kit.ArkData';
-import BuildProfile from 'BuildProfile';
 import { CredentialVault, HuksCredentialVault, MemoryCredentialVault } from '../security/CredentialVault';
 import { DraftMessage, EmailAccount, EmailProviderType, MailAddress, MailAttachment, MailAttachmentPayload,
   MailFolder, MailFolderCounts, MailMessage, SendStatus } from '../model/MailModels';
@@ -15,8 +14,6 @@ import { newMessageId } from '../common/MessageId';
 
 const DATABASE_NAME: string = 'mail_helper.db';
 const DATABASE_VERSION: number = 9;
-// 演示数据只写一次：标记写进 app_settings 后，用户即使删光账户重启也不会再被写入示例账户 / 邮件。
-const SEEDED_SETTING_KEY: string = 'seeded';
 // 列表页只需要摘要列：跳过 plain_body/html_body 大字段，避免整表正文进入内存。
 // sort_order 是 epoch 毫秒，列表的日期分组 / 行内时间 / 键集分页游标都依赖它，必须带上。
 const SUMMARY_COLUMNS: string = `id, account_id, folder, sender_name, sender_address, recipient_name,
@@ -27,8 +24,21 @@ const BIND_BATCH_SIZE: number = 500;
 // limit <= 0 表示不限制条数。
 const NO_LIMIT: number = 0;
 // sort_order 的时间语义下限（2000-01-01）：小于它的值一定不是 epoch 毫秒，
-// 而是 8 及更早版本的示例数据用的自增序号，需要按迁移回填成时间戳。
+// 而是 8 及更早版本写入的自增序号，需要按迁移回填成时间戳。
 const MIN_EPOCH_SORT_ORDER: number = 946684800000;
+
+// preservedAttachments 的结果：preserved 是本轮必须原样保留附件行的邮件（已有完整 uri），
+// previousUris 是批内所有已有附件行的旧 uri，事务回滚时据此决定哪些旧文件不能被删。
+class AttachmentPreservation {
+  preserved: Map<string, MailAttachment[]>;
+  previousUris: Map<string, string[]>;
+
+  constructor(preserved: Map<string, MailAttachment[]> = new Map<string, MailAttachment[]>(),
+    previousUris: Map<string, string[]> = new Map<string, string[]>()) {
+    this.preserved = preserved;
+    this.previousUris = previousUris;
+  }
+}
 
 export class LocalMailRepository implements MailRepository, PendingOperationStore {
   private static instance: LocalMailRepository = new LocalMailRepository();
@@ -72,7 +82,6 @@ export class LocalMailRepository implements MailRepository, PendingOperationStor
     this.store = await relationalStore.getRdbStore(context, config);
     await this.enqueueWrite(async (): Promise<void> => {
       await this.createSchema();
-      await this.seedDemoDataOnce();
       await this.recoverStuckSends();
     });
   }
@@ -209,121 +218,13 @@ export class LocalMailRepository implements MailRepository, PendingOperationStor
         'ALTER TABLE pending_operations ADD COLUMN next_retry_at INTEGER NOT NULL DEFAULT 0');
     }
     if (previousVersion > 0 && previousVersion < 9) {
-      // 8 及更早版本的示例数据把自增序号当 sort_order，日期分组与行内时间按它算会落到 1970 年。
+      // 8 及更早版本写入的数据把自增序号当 sort_order，日期分组与行内时间按它算会落到 1970 年。
       // 只回填明显不是时间戳的行（真实邮件来自 IMAP，写的一直是 epoch 毫秒）。
       await store.executeSql(
         'UPDATE messages SET sort_order = ? WHERE sort_order > 0 AND sort_order < ?',
         [Date.now(), MIN_EPOCH_SORT_ORDER]);
     }
     store.version = DATABASE_VERSION;
-  }
-
-  // 演示数据只在 debug 构建、且从未写过演示数据、且账户表为空时才落库：
-  // release 包不写演示数据；一次性标记（app_settings.seeded）保证用户删光账户后不会复活示例数据。
-  // 这里直接写 app_settings 而不走 setSetting：本方法已在 enqueueWrite 串行段内，
-  // 再入队会等自己所在的串行段结束，形成死锁。
-  private async seedDemoDataOnce(): Promise<void> {
-    const store: relationalStore.RdbStore = this.requireStore();
-    const seeded: relationalStore.ResultSet = await store.querySql(
-      'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1', [SEEDED_SETTING_KEY]);
-    let alreadySeeded: boolean = false;
-    try {
-      alreadySeeded = seeded.goToFirstRow() &&
-        seeded.getString(seeded.getColumnIndex('setting_value')) === 'true';
-    } finally {
-      seeded.close();
-    }
-    if (alreadySeeded) {
-      return;
-    }
-    const result: relationalStore.ResultSet = await store.querySql('SELECT COUNT(*) AS total FROM accounts');
-    let count: number = 0;
-    try {
-      if (result.goToFirstRow()) {
-        count = result.getLong(result.getColumnIndex('total'));
-      }
-    } finally {
-      result.close();
-    }
-    if (count > 0) {
-      await this.markSeeded();
-      return;
-    }
-    if (BuildProfile.DEBUG) {
-      await this.writeDemoData();
-    }
-    await this.markSeeded();
-  }
-
-  private async markSeeded(): Promise<void> {
-    await this.requireStore().executeSql(
-      'INSERT OR REPLACE INTO app_settings (setting_key, setting_value) VALUES (?, ?)',
-      [SEEDED_SETTING_KEY, 'true']);
-  }
-
-  private async writeDemoData(): Promise<void> {
-    const qq: EmailAccount = new EmailAccount('account_qq', 'hello@qq.com', '工作邮箱',
-      EmailProviderType.QQ, '#2878FF', '', 0);
-    const gmail: EmailAccount = new EmailAccount('account_gmail', 'hello@gmail.com', '个人邮箱',
-      EmailProviderType.GMAIL, '#94A3B8', '', 0, false);
-    const netease: EmailAccount = new EmailAccount('account_163', 'work_account@163.com', '163 邮箱',
-      EmailProviderType.NETEASE_163, '#24A6A1');
-    const outlook: EmailAccount = new EmailAccount('account_outlook', 'business@outlook.com', 'Outlook',
-      EmailProviderType.OUTLOOK, '#5367F8');
-    const accounts: EmailAccount[] = [qq, netease, gmail, outlook];
-    for (let index: number = 0; index < accounts.length; index++) {
-      await this.insertAccount(accounts[index], index + 1);
-    }
-
-    const messages: MailMessage[] = [
-      new MailMessage('mail_1', qq.id, MailFolder.INBOX,
-        new MailAddress('HarmonyOS 团队', 'developer@harmonyos.com'), [new MailAddress('我', qq.email)],
-        'NEXT 版本更新说明与开发指南',
-        '您好，全新的 HarmonyOS NEXT 开发者预览版已经发布。本次更新带来了全新的原生 UI 框架。',
-        '团队成员大家好，\n\n随着第四季度的深入，我们的核心产品线即将迎来关键里程碑。为了确保按时交付并保证质量，我计划在下周二下午召开一次全面的进度评审会议。\n\n本次会议的主要议题包括：\n1. 各模块当前开发进度与目标核对。\n2. 识别并解决可能存在的研发阻塞点。\n3. 根据最新市场反馈调整后续资源。\n\n请大家在会前仔细阅读附件中的季度报告草案和进度追踪表。\n\n祝好，\nHarmonyOS 团队',
-        '09:41', false, true, true),
-      new MailMessage('mail_2', netease.id, MailFolder.INBOX,
-        new MailAddress('财务部 - 张伟', 'finance@company.com'), [new MailAddress('我', netease.email)],
-        '2023年第四季度报销审批进度通知',
-        '您的Q4季度差旅报销申请已通过最终审批，预计款项将在3个工作日内到账。',
-        '您的Q4季度差旅报销申请已通过最终审批，预计款项将在3个工作日内打入您的工资卡账户，请注意查收。',
-        '08:15', true, false, false),
-      new MailMessage('mail_3', outlook.id, MailFolder.INBOX,
-        new MailAddress('设计系统周报', 'design@example.com'), [new MailAddress('我', outlook.email)],
-        '【第42期】全新组件库资产已上线',
-        '本周我们完成了 24 个核心组件的视觉规范升级，并引入了全新的微动效体系。',
-        '本周我们完成了 24 个核心组件的视觉规范升级。重点优化了深色模式下的对比度问题，并引入了全新的微动效体系。',
-        '昨天 16:30', false, false, false),
-      new MailMessage('mail_4', gmail.id, MailFolder.INBOX,
-        new MailAddress('Mozilla 社区', 'community@mozilla.org'), [new MailAddress('我', gmail.email)],
-        '欢迎加入开放互联网社区', '感谢你关注开放互联网。本期社区通讯包含隐私、安全和开源项目的最新动态。',
-        '感谢你关注开放互联网。\n\n本期社区通讯包含隐私、安全和开源项目的最新动态，也欢迎参与社区活动。',
-        '周一', true, true, false),
-      new MailMessage('mail_5', qq.id, MailFolder.SENT,
-        new MailAddress('我', qq.email), [new MailAddress('产品团队', 'product@example.com')],
-        'Re: NEXT 版本发布计划', '已收到，发布前我会完成最终检查。',
-        '已收到，发布前我会完成最终检查。', '周日', true, false, false),
-      new MailMessage('mail_6', netease.id, MailFolder.DRAFTS,
-        new MailAddress('我', netease.email), [new MailAddress('', 'finance@company.com')],
-        '报销材料补充说明', '附件中的发票信息已经重新整理。',
-        '附件中的发票信息已经重新整理。', '周六', true, false, true)
-    ];
-    // 种子邮件的 sort_order 必须是真实 epoch 毫秒：列表的日期分组、行内时间与分页游标都按它算，
-    // 用自增序号会让全部示例邮件落到 1970 年。时间点与上面的展示串（今天 09:41 / 昨天 16:30 等）对应。
-    const midnight: number = new Date(new Date().getFullYear(), new Date().getMonth(),
-      new Date().getDate()).getTime();
-    const hourMs: number = 60 * 60 * 1000;
-    const seedTimes: number[] = [
-      midnight + 9 * hourMs + 41 * 60 * 1000,
-      midnight + 8 * hourMs + 15 * 60 * 1000,
-      midnight - 24 * hourMs + 16 * hourMs + 30 * 60 * 1000,
-      midnight - 2 * 24 * hourMs,
-      midnight - 3 * 24 * hourMs,
-      midnight - 4 * 24 * hourMs
-    ];
-    for (let index: number = 0; index < messages.length; index++) {
-      await this.insertMessage(messages[index], seedTimes[index]);
-    }
   }
 
   private async insertAccount(account: EmailAccount, createdAt: number = Date.now(),
@@ -384,9 +285,12 @@ export class LocalMailRepository implements MailRepository, PendingOperationStor
     }
   }
 
-  private async storeAttachments(messageId: string,
-    payloads: MailAttachmentPayload[]): Promise<MailAttachment[]> {
-    const uris: string[] = await this.attachmentFiles.writeMessageAttachments(messageId, payloads);
+  // keepExistingFiles 为 true 时不清空该邮件的附件目录：目录里的历史文件要活到事务提交
+  // （回滚后旧附件行仍指向它们），旧文件的清理交给提交成功后的 pruneMessageAttachments。
+  private async storeAttachments(messageId: string, payloads: MailAttachmentPayload[],
+    keepExistingFiles: boolean = false): Promise<MailAttachment[]> {
+    const uris: string[] = await this.attachmentFiles.writeMessageAttachments(messageId, payloads,
+      keepExistingFiles);
     const attachments: MailAttachment[] = [];
     for (let index: number = 0; index < payloads.length; index++) {
       const payload: MailAttachmentPayload = payloads[index];
@@ -833,17 +737,25 @@ export class LocalMailRepository implements MailRepository, PendingOperationStor
     }
     // 已有完整附件行的邮件不再重写附件：重同步（loadOlder 重叠、服务器整表重刷）时的新解析可能
     // 因为正文被截断而缺附件，重写会连同沙箱文件一起毁掉先前完好的附件。正文/信封字段照旧更新。
-    const preserved: Map<string, MailAttachment[]> = await this.preservedAttachments(messageIds);
+    const preservation: AttachmentPreservation = await this.preservedAttachments(messageIds);
     // 附件落盘是文件 IO，放在事务外，避免长时间持有数据库事务。
     const attachments: MailAttachment[][] = [];
+    // 本轮真正写了附件文件的邮件（新邮件 + 需补写附件的旧邮件）及其新 uri，用于提交/回滚后的文件收尾。
+    const rewritten: string[] = [];
+    const rewrittenUris: Map<string, string[]> = new Map<string, string[]>();
     for (let index: number = 0; index < messages.length; index++) {
-      const keep: MailAttachment[] | undefined = preserved.get(messages[index].id);
+      const messageId: string = messages[index].id;
+      const keep: MailAttachment[] | undefined = preservation.preserved.get(messageId);
       if (keep !== undefined) {
         attachments.push(keep);
         continue;
       }
-      attachments.push(await this.storeAttachments(messages[index].id,
-        attachmentPayloads[index] ?? []));
+      // 已存在的邮件带着旧附件目录写：旧文件必须活到事务提交，否则回滚后旧附件行会指向空文件。
+      const stored: MailAttachment[] = await this.storeAttachments(messageId,
+        attachmentPayloads[index] ?? [], existing.has(messageId));
+      attachments.push(stored);
+      rewritten.push(messageId);
+      rewrittenUris.set(messageId, stored.map((item: MailAttachment): string => item.uri));
     }
     try {
       await this.inTransaction(async (): Promise<void> => {
@@ -853,19 +765,44 @@ export class LocalMailRepository implements MailRepository, PendingOperationStor
         }
       });
     } catch (error) {
-      await this.discardAttachmentFiles(messageIds
+      // 回滚清理分两类，取舍是“旧附件行必须仍然可用”优先：
+      // - 新邮件：目录里所有文件都是本轮写的，整目录删掉。
+      // - 已存在的邮件：只删本轮新写、旧附件行不认的文件（按旧 uri 保留），旧文件一律不动。
+      // 注意 writeMessageAttachments 里同名文件（index_名字 相同）会被本轮内容覆盖，
+      // 覆盖后旧行读到的是本轮内容——同名同序号的附件内容一致，这里接受这点残留差异。
+      await this.discardAttachmentFiles(rewritten
         .filter((messageId: string): boolean => !existing.has(messageId)));
+      for (let index: number = 0; index < rewritten.length; index++) {
+        const messageId: string = rewritten[index];
+        if (existing.has(messageId)) {
+          await this.attachmentFiles.pruneMessageAttachments(messageId,
+            preservation.previousUris.get(messageId) ?? []);
+        }
+      }
       if (error instanceof Error) {
         throw error;
       }
       throw new Error('批量写入邮件失败');
+    }
+    // 提交成功后才删旧文件：提交前删会让回滚后的旧附件行指向被删掉的文件。
+    // 代价：从落盘到提交这段时间目录里新旧文件并存（磁盘短时多占用），进程若在提交前被杀，
+    // 残留的旧文件要等下一次 prune 或删除邮件时才被清掉——换回来的是“任何时刻都不出现
+    // 附件行指向空文件”这个更重要的性质。
+    for (let index: number = 0; index < rewritten.length; index++) {
+      const messageId: string = rewritten[index];
+      if (!existing.has(messageId)) {
+        continue;
+      }
+      await this.attachmentFiles.pruneMessageAttachments(messageId,
+        rewrittenUris.get(messageId) ?? []);
     }
     return insertedCount;
   }
 
   // 返回“附件行必须原样保留”的邮件 id → 附件行。判定：该邮件已有附件行，且每一行都带 uri
   // （说明上次已完整落盘）。全部行都缺 uri 的（上次没下全）不返回，允许本轮补写。
-  private async preservedAttachments(messageIds: string[]): Promise<Map<string, MailAttachment[]>> {
+  // previousUris 是批内所有已有附件行的旧 uri（含 preserved 的）：事务回滚时用它决定哪些旧文件必须保留。
+  private async preservedAttachments(messageIds: string[]): Promise<AttachmentPreservation> {
     const rows: Map<string, MailAttachment[]> = new Map<string, MailAttachment[]>();
     const missingUri: Set<string> = new Set<string>();
     for (let start: number = 0; start < messageIds.length; start += BIND_BATCH_SIZE) {
@@ -899,12 +836,16 @@ export class LocalMailRepository implements MailRepository, PendingOperationStor
       }
     }
     const preserved: Map<string, MailAttachment[]> = new Map<string, MailAttachment[]>();
+    const previousUris: Map<string, string[]> = new Map<string, string[]>();
     rows.forEach((list: MailAttachment[], messageId: string) => {
+      const uris: string[] = list.map((item: MailAttachment): string => item.uri)
+        .filter((uri: string): boolean => uri.length > 0);
+      previousUris.set(messageId, uris);
       if (!missingUri.has(messageId)) {
         preserved.set(messageId, list);
       }
     });
-    return preserved;
+    return new AttachmentPreservation(preserved, previousUris);
   }
 
   // 尽力清理：删除失败不影响主流程（文件可能仍被其他记录引用或已被移除）。

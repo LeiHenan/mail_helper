@@ -1555,12 +1555,27 @@ struct Index {
         } else {
           this.regularTopBar()
         }
-        if (this.displayCount === 0 && this.isLoadingList) {
-          this.skeletonList()
-        } else if (this.displayCount === 0) {
-          this.emptyState()
-        } else {
-          Refresh({ refreshing: $$this.isRefreshing }) {
+        Refresh({ refreshing: $$this.isRefreshing }) {
+          if (this.displayCount === 0) {
+            // 空态 / 骨架屏也放进 Refresh 里的可滚动容器：内容不满一屏时 List 默认不接管手势，
+            // 用 alwaysEnabled 让 List 响应手势并带动 Refresh（见 docs/arkui/ts-container-refresh.md 示例 9），
+            // 这样空列表与筛选无结果时也能下拉同步——空态文案本身就写着「下拉同步」。
+            List() {
+              ListItem() {
+                Column() {
+                  if (this.isLoadingList) {
+                    this.skeletonList()
+                  } else {
+                    this.emptyState()
+                  }
+                }.width('100%').height('100%')
+              }
+              .width('100%').height('100%')
+            }
+            .width('100%').height('100%').scrollBar(BarState.Off)
+            .edgeEffect(EdgeEffect.Spring, { alwaysEnabled: true })
+            .backgroundColor($r('app.color.surface'))
+          } else {
             List({ space: 8 }) {
               LazyForEach(this.dataSource, (row: MailListRow) => {
                 if (row.isHeader()) {
@@ -1603,7 +1618,8 @@ struct Index {
                   return;
                 }
                 this.lastReachStartSyncAt = now;
-                this.syncAccounts();
+                // 顶部回弹是顺带动作，静默同步：不弹提示、也不走「正在连接邮件服务器」的反馈文案。
+                this.syncAccounts(false);
               } else {
                 this.loadMoreMessages();
               }
@@ -1616,11 +1632,11 @@ struct Index {
               }
             })
           }
-          .layoutWeight(1).width('100%')
-          .onRefreshing(() => {
-            this.pullRefresh().catch(() => {});
-          })
         }
+        .layoutWeight(1).width('100%')
+        .onRefreshing(() => {
+          this.pullRefresh().catch(() => {});
+        })
       }
       .width('100%').height('100%').backgroundColor($r('app.color.surface'))
 

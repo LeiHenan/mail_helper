@@ -108,8 +108,13 @@ export class MailListRow {
     return new MailListRow(key, MailRowKind.HEADER, label, label);
   }
 
+  // 行 key 带上会被单条刷新影响的可变状态（已读 / 星标）：官方文档要求
+  // 「使用 DataChangeListener 对象的 onDataChange 方法更新 UI 时，需要生成不同于原来的键值来触发组件刷新」
+  // （docs/arkui/arkts-rendering-control-lazyforeach.md），否则点星标 / 标已读后行内图标与未读样式不重建。
+  // 选中态 selected 由 @Prop 下发，不参与 key。行内换色的资源（$r('app.color.*')）不参与 key。
   static messageRow(message: MailMessage, groupLabel: string): MailListRow {
-    return new MailListRow(message.id, MailRowKind.MESSAGE, '', groupLabel, message);
+    const key: string = `${message.id}#${message.isRead ? 1 : 0}${message.isStarred ? 1 : 0}`;
+    return new MailListRow(key, MailRowKind.MESSAGE, '', groupLabel, message);
   }
 
   isHeader(): boolean {

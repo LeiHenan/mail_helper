@@ -539,6 +539,11 @@ struct AddAccount {
         .width('100%').fontSize(12).lineHeight(18).fontColor($r('app.color.onSurfaceVariant'))
       Text('这种方式无需注册 OAuth 应用，用账号密码也无法登录，必须使用这里生成的密码。')
         .width('100%').fontSize(12).lineHeight(18).fontColor($r('app.color.onSurfaceVariant'))
+      Row() {
+        Text('查看分步指南').fontSize(13).fontWeight(FontWeight.Medium).fontColor($r('app.color.primary'))
+      }
+      .width('100%').height(ThunderbirdTheme.touchTarget).alignItems(VerticalAlign.Center)
+      .onClick(() => this.getUIContext().getRouter().pushUrl({ url: 'pages/GmailGuide' }).catch(() => {}))
     }
     .width('100%').padding(14)
     .backgroundColor($r('app.color.surfaceLow'))

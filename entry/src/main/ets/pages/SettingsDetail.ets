@@ -136,7 +136,7 @@ struct SettingsDetail {
   }
 
   // setColorMode 会同步更新应用配置，深浅色资源随之切换，无需重载页面。
-  private applyColorMode(mode: string): void {
+  private async applyColorMode(mode: string): Promise<void> {
     let colorMode: ConfigurationConstant.ColorMode = ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET;
     if (mode === 'dark') {
       colorMode = ConfigurationConstant.ColorMode.COLOR_MODE_DARK;
@@ -146,6 +146,13 @@ struct SettingsDetail {
     try {
       const context: common.UIAbilityContext = this.getUIContext().getHostContext() as common.UIAbilityContext;
       context.getApplicationContext().setColorMode(colorMode);
+      // setColorMode 触发的配置更新不一定回调 onConfigurationUpdate，显式选择时直接更新状态栏前景色。
+      if (mode === 'dark' || mode === 'light') {
+        const mainWindow: window.Window = await window.getLastWindow(context);
+        await mainWindow.setWindowSystemBarProperties({
+          statusBarContentColor: mode === 'dark' ? '#FFFFFF' : '#000000'
+        });
+      }
     } catch (_error) {
       showToast('已保存外观设置，重新打开应用后生效');
     }
@@ -289,6 +296,19 @@ struct SettingsDetail {
           Text('离线操作').fontSize(17).fontWeight(FontWeight.Bold).fontColor($r('app.color.onSurface'))
           Text('星标、已读、归档和删除会先保存在本地，服务器可用时再依次同步。')
             .fontSize(14).lineHeight(22).fontColor($r('app.color.onSurfaceVariant'))
+          Divider().color($r('app.color.outlineVariant'))
+          Row({ space: 8 }) {
+            Column({ space: 4 }) {
+              Text('Gmail 设置指南').fontSize(17).fontWeight(FontWeight.Bold)
+                .fontColor($r('app.color.onSurface'))
+              Text('两步验证、应用专用密码与 IMAP 的分步说明').fontSize(14).lineHeight(22)
+                .fontColor($r('app.color.onSurfaceVariant'))
+            }.layoutWeight(1).alignItems(HorizontalAlign.Start)
+            Image($r('app.media.ic_chevron_right')).width(19).height(19).objectFit(ImageFit.Contain)
+              .fillColor($r('app.color.outline'))
+          }
+          .width('100%').constraintSize({ minHeight: 56 })
+          .onClick(() => this.getUIContext().getRouter().pushUrl({ url: 'pages/GmailGuide' }).catch(() => {}))
         }.width('100%').padding(18).alignItems(HorizontalAlign.Start)
           .backgroundColor($r('app.color.surfaceLowest'))
           .border({ width: 1, color: $r('app.color.cardBorder') })

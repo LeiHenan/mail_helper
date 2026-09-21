@@ -36,7 +36,7 @@ export default class EntryAbility extends UIAbility {
     }
     try {
       // 外观设置读库后才能拿到，因此首帧先按系统配色，这里再切一次（接受一次配色刷新）。
-      this.appearanceMode = await LocalMailRepository.shared().getSetting(APPEARANCE_SETTING_KEY, 'system');
+      await this.refreshAppearanceMode();
       this.applyColorMode();
     } catch (error) {
       hilog.error(DOMAIN, 'MailHelper', 'Failed to apply appearance mode: %{public}s',
@@ -67,9 +67,11 @@ export default class EntryAbility extends UIAbility {
     this.databaseReady.then(() => this.applyPrivacyMode(windowStage)).catch(() => {});
   }
 
-  onConfigurationUpdate(_newConfig: Configuration): void {
+  onConfigurationUpdate(newConfig: Configuration): void {
     // 深浅色切换后资源会自动换色，这里只需要同步状态栏前景色。
-    this.applySystemBarAppearance(this.mainWindowStage);
+    // 用回调带进来的 newConfig.colorMode 判定，而不是读 this.context.config：
+    // 在回调里 context.config 可能还没更新，会按切换前的配色算错状态栏前景色。
+    this.applySystemBarAppearance(this.mainWindowStage, newConfig.colorMode);
   }
 
   onWindowStageDestroy(): void {
@@ -106,13 +108,26 @@ export default class EntryAbility extends UIAbility {
     return ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET;
   }
 
-  // 跟随系统时看当前生效配置，显式指定时以设置为准，避免配置更新滞后的窗口期里判断错误。
-  private isDarkMode(): boolean {
+  // 每次判定前重新读库里的外观设置：设置页改过外观后，ability 里启动时读到的缓存已经过期，
+  // 用旧值算会把状态栏文字算成与背景同色。读库失败（首帧窗口创建时库可能还没就绪）时退回缓存值。
+  private async refreshAppearanceMode(): Promise<void> {
+    try {
+      this.appearanceMode = await LocalMailRepository.shared().getSetting(APPEARANCE_SETTING_KEY, 'system');
+    } catch (_error) {
+    }
+  }
+
+  // 跟随系统时优先用本次配置更新带进来的配色（configColorMode）；没有入参或入参是「未设置」时
+  // 再退回 context.config，避免配置更新滞后的窗口期里判断错误。
+  private isDarkMode(configColorMode?: ConfigurationConstant.ColorMode): boolean {
     const colorMode: ConfigurationConstant.ColorMode = this.resolveColorMode();
     if (colorMode !== ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET) {
       return colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK;
     }
-    return this.context.config.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK;
+    const effective: ConfigurationConstant.ColorMode | undefined =
+      configColorMode === undefined || configColorMode === ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET
+        ? this.context.config.colorMode : configColorMode;
+    return effective === ConfigurationConstant.ColorMode.COLOR_MODE_DARK;
   }
 
   private applyColorMode(): void {
@@ -124,14 +139,16 @@ export default class EntryAbility extends UIAbility {
     }
   }
 
-  private async applySystemBarAppearance(windowStage?: window.WindowStage): Promise<void> {
+  private async applySystemBarAppearance(windowStage?: window.WindowStage,
+    configColorMode?: ConfigurationConstant.ColorMode): Promise<void> {
     if (!windowStage) return;
     try {
       const mainWindow: window.Window = this.mainWindow ?? await windowStage.getMainWindow();
       this.mainWindow = mainWindow;
+      await this.refreshAppearanceMode();
       // 浅色模式用深色前景，深色模式用浅色前景，避免状态栏内容与背景同色。
       const properties: window.SystemBarProperties = {
-        statusBarContentColor: this.isDarkMode() ? '#FFFFFF' : '#000000'
+        statusBarContentColor: this.isDarkMode(configColorMode) ? '#FFFFFF' : '#000000'
       };
       await mainWindow.setWindowSystemBarProperties(properties);
     } catch (_error) {

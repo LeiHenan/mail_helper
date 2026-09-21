@@ -287,23 +287,36 @@ export class ImapClient {
       }
     }
     const missingUids: string[] = uids.filter((uid: string): boolean => !fetchedUids.has(uid));
-    if (uids.length > 1) {
-      if (missingUids.length > 0) {
-        await this.fetchBatchIndividually(missingUids, records, skippedUids);
-        return;
-      }
-      if (parsed.length < blocks.length) {
-        await this.fetchBatchIndividually(uids, records, skippedUids);
-        return;
-      }
+    // 顺序意图：先把本批已成功解析的记录并入 records，再对缺失/失败的 UID 走单封重取。
+    // 这两条补偿分支原先在并入之前就直接 return，本批已解析成功的邮件被整批丢弃；调用方按入库
+    // 结果推进游标后会越过这些 UID，而增量同步的 UID 范围不再包含它们 → 邮件永久丢失。
+    this.appendRecords(records, parsed);
+    if (uids.length > 1 && missingUids.length > 0) {
+      await this.fetchBatchIndividually(missingUids, records, skippedUids);
+      return;
+    }
+    if (uids.length > 1 && parsed.length < blocks.length) {
+      // 解析条数少于响应块数（存在解析不出的块）：整批单封重取兜底，结果同样经 appendRecords 去重。
+      await this.fetchBatchIndividually(uids, records, skippedUids);
+      return;
     }
     if (missingUids.length > 0) {
       // 单封解析不出：跳过它，其余 UID 继续处理。
       this.recordSkipped(skippedUids, missingUids[0], '邮件内容无法解析');
-      return;
     }
-    for (let index: number = 0; index < parsed.length; index++) {
-      records.push(parsed[index]);
+  }
+
+  // 按 UID 去重后并入 records。同一批的 parsed 与后续单封重取会命中同一 UID：
+  // 重复入库本身幂等（INSERT OR REPLACE），但 records 内出现同 UID 两条会让调用方
+  // 重复计数、重复写附件文件目录，所以这里保证同一 UID 只保留先到的那条。
+  private appendRecords(records: ImapMessageRecord[], incoming: ImapMessageRecord[]): void {
+    for (let index: number = 0; index < incoming.length; index++) {
+      const record: ImapMessageRecord = incoming[index];
+      const duplicated: boolean = records.some((existing: ImapMessageRecord): boolean =>
+        existing.uid === record.uid);
+      if (!duplicated) {
+        records.push(record);
+      }
     }
   }
 

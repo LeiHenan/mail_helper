@@ -37,6 +37,7 @@ MailSendService ────────► SmtpClient  ──► ProtocolSocket
 - `AccountDetail`：服务器设置查看与修改、探测结果。
 - `AddAccount`：邮箱地址自动发现、手动配置、授权码、应用专用密码（Gmail）或 OAuth 登录。
 - `SettingsDetail`：邮件列表、滑动手势、通知、同步、隐私与安全、外观、帮助等分节设置。
+- `GmailGuide`：Gmail 应用专用密码的 4 步设置指南（两步验证、生成密码、启用 IMAP、回到应用添加账户），前两步可直接拉起 Google 对应网页；入口在添加账户的「应用专用密码」说明卡与设置的帮助分节。
 
 ### 公共组件（common/）
 
@@ -65,7 +66,7 @@ MailSendService ────────► SmtpClient  ──► ProtocolSocket
 
 ### 数据层（data/）
 
-`MailRepository` 是页面唯一依赖的数据接口，`LocalMailRepository` 是唯一实现（`MockMailRepository` 已删除）。数据库 `mail_helper.db` 当前版本 8：
+`MailRepository` 是页面唯一依赖的数据接口，`LocalMailRepository` 是唯一实现（`MockMailRepository` 已删除）。数据库 `mail_helper.db` 当前版本 9：
 
 | 表 | 内容 |
 | --- | --- |
@@ -85,7 +86,6 @@ MailSendService ────────► SmtpClient  ──► ProtocolSocket
 - 侧边栏计数由 `folderCounts()` 一条聚合 SQL 得出，替代原先 7 次邮件查询。
 - `getSettingsByPrefix()` 一次取回某前缀下的全部设置（如各账户的 `last_sync_`），前缀中的 `%`、`_` 按字面量转义。
 - 删除分软硬两种：`deleteMessages()` 只改文件夹并入队远端删除，`purgeMessages()`/`emptyTrash()` 才真正删行并清理附件目录。
-- 首次启动由 `seedDemoDataOnce()` 写入示例账户与邮件：仅在 debug 构建（`BuildProfile.DEBUG`）且未打过一次性 `seeded` 标记时执行，用于演示 UI；release 构建不写入演示数据，删光账户后不会复活。
 - 全部写入路径（含事务方法）经 `enqueueWrite` 串行器排队，事务嵌套并入外层事务（原子性由最外层负责），杜绝并发写库破坏事务；同步按账户单飞（`inFlightSyncs`），重复触发返回 `skipped` 结果。
 - UID 游标以实际入库的最大 UID 为准；单封失败的邮件记入 `last_folder_skipped_*` 而不阻塞整账户；UIDVALIDITY 变化时先清空该文件夹的本地行、附件与相关待推送操作再全量重拉。
 

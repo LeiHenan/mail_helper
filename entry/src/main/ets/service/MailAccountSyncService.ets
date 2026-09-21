@@ -29,9 +29,12 @@ export class AccountSyncResult {
   }
 }
 
-// 按 accountId 的单飞表：前台的定时/下拉同步、账户详情页的“立即同步”和后台 WorkScheduler
-// 都可能同时触发同一账户的同步，重复同步会争抢同一个 IMAP 连接状态与同步游标。
+// 按 accountId 的账户级单飞表：前台的定时/下拉同步、账户详情页的“立即同步”和后台 WorkScheduler
+// 都可能同时触发同一账户的服务器操作，重复执行会争抢同一个 IMAP 连接状态与同步游标。
 // 放在模块级是因为各页面/扩展各自 new 了 MailAccountSyncService 实例。
+// 覆盖范围是“每一个会新开 IMAP 会话的账户级操作”：synchronize、pushPendingOperations、loadOlder。
+// 只保护 synchronize 时，星标/已读回推和加载历史会另开一条并发 IMAP 会话，导致 pending 队列被
+// 重复执行（同一账户的连接被抢、命令超时）、retry_count 无谓堆积，投递草稿也可能被并发投两次。
 const inFlightSyncs: Map<string, Promise<AccountSyncResult>> = new Map<string, Promise<AccountSyncResult>>();
 
 export class MailAccountSyncService {
@@ -44,7 +47,31 @@ export class MailAccountSyncService {
     this.sendService = new MailSendService(repository);
   }
 
+  // 账户级单飞：同账户已有服务器操作在跑时直接返回 skipped=true（errorMessage 为空，UI 不当失败处理）。
+  // 被跳过的工作不需要补偿性重跑：synchronize 自己会执行 pending 队列，本地已落库的星标/已读/移动
+  // 等操作留在队列里等下一轮；history 由 skippedHasMoreHistory 让调用方继续保留“加载更早邮件”的能力。
+  private async runAccountExclusive(account: EmailAccount, work: () => Promise<AccountSyncResult>,
+    skippedHasMoreHistory: boolean = false): Promise<AccountSyncResult> {
+    if (inFlightSyncs.has(account.id)) {
+      return new AccountSyncResult(account.id, account.displayName, 0, '', skippedHasMoreHistory, 0, true);
+    }
+    // 注册与检查之间不能有 await：work() 虽会立即开始执行，但到它第一次 await 之前都同步运行，
+    // 因此“检查 + 注册”对同一账户的其它调用是原子的。
+    const run: Promise<AccountSyncResult> = work();
+    inFlightSyncs.set(account.id, run);
+    try {
+      return await run;
+    } finally {
+      inFlightSyncs.delete(account.id);
+    }
+  }
+
   async pushPendingOperations(account: EmailAccount): Promise<AccountSyncResult> {
+    return this.runAccountExclusive(account,
+      (): Promise<AccountSyncResult> => this.runPushPendingOperations(account));
+  }
+
+  private async runPushPendingOperations(account: EmailAccount): Promise<AccountSyncResult> {
     if (!account.syncEnabled) {
       return new AccountSyncResult(account.id, account.displayName, 0, '账户同步已暂停');
     }
@@ -75,20 +102,12 @@ export class MailAccountSyncService {
     }
   }
 
-  // 同一账户的同步单飞：已有同步在跑时本次直接跳过（skipped=true，errorMessage 为空，
-  // 不会被 UI 当成失败），避免两个 IMAP 会话争抢同一账户的游标/文件夹状态。
-  // shouldCancel 由后台任务传入（onWorkStop 置位），用于在文件夹边界中断同步。
+  // 同一账户的同步单飞（与 pushPendingOperations/loadOlder 共用同一张表）：已有服务器操作在跑时
+  // 本次直接跳过（skipped=true，errorMessage 为空，不会被 UI 当成失败），避免两个 IMAP 会话争抢
+  // 同一账户的游标/文件夹状态。shouldCancel 由后台任务传入（onWorkStop 置位），用于在文件夹边界中断同步。
   async synchronize(account: EmailAccount, shouldCancel?: () => boolean): Promise<AccountSyncResult> {
-    if (inFlightSyncs.has(account.id)) {
-      return new AccountSyncResult(account.id, account.displayName, 0, '', false, 0, true);
-    }
-    const run: Promise<AccountSyncResult> = this.runSynchronize(account, shouldCancel);
-    inFlightSyncs.set(account.id, run);
-    try {
-      return await run;
-    } finally {
-      inFlightSyncs.delete(account.id);
-    }
+    return this.runAccountExclusive(account,
+      (): Promise<AccountSyncResult> => this.runSynchronize(account, shouldCancel));
   }
 
   private async runSynchronize(account: EmailAccount,
@@ -173,7 +192,16 @@ export class MailAccountSyncService {
     }
   }
 
+  // 加载更早邮件也要过账户级单飞：它同样会新开 IMAP 会话并写 sync_* 状态（oldest_uid/history_complete），
+  // 与正在跑的同步并发会让游标互相覆盖、重复拉取同一批历史邮件。
+  // 被跳过时 hasMoreHistory 传 true：历史并没有读完，只是这次没跑，调用方要保留“还能继续加载”的状态。
   async loadOlder(account: EmailAccount, folder: MailFolder, limit: number = 50): Promise<AccountSyncResult> {
+    return this.runAccountExclusive(account,
+      (): Promise<AccountSyncResult> => this.runLoadOlder(account, folder, limit), true);
+  }
+
+  private async runLoadOlder(account: EmailAccount, folder: MailFolder,
+    limit: number = 50): Promise<AccountSyncResult> {
     if (!account.syncEnabled) {
       return new AccountSyncResult(account.id, account.displayName, 0, '账户同步已暂停');
     }
