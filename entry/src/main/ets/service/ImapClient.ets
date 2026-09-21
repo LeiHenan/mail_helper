@@ -633,10 +633,12 @@ export class ImapClient {
         protocolCursor = contentEnd;
         cursor = contentEnd;
       } else if (upperSegment.includes('[TEXT]')) {
-        const contentEnd: number = textEnd >= 0 ? textEnd : this.literalEnd(response, contentStart, size, bound);
+        const contentEnd: number = this.textLiteralEnd(response, contentStart, size, bound, textEnd);
         text = response.substring(contentStart, contentEnd);
         textSize = size;
-        cursor = bound;
+        // 不能跳到 bound：Gmail 会把 BODY[HEADER] 放在 TEXT 之后返回，继续循环才能取到头部。
+        cursor = contentEnd;
+        protocolCursor = contentEnd;
       } else {
         const skipped: number = this.literalEnd(response, contentStart, size, bound);
         protocolCursor = skipped;
@@ -693,6 +695,49 @@ export class ImapClient {
       index += widthInChars;
     }
     return index;
+  }
+
+  // TEXT literal 的结束位置。优先按声明字节数切（并用紧随其后的协议特征校验，防止 GBK 等
+  // 非 UTF-8 正文经流式解码后字节计数漂移）；校验失败再退回结构锚定（HEADER 项标记或块结束符）。
+  private textLiteralEnd(response: string, contentStart: number, size: number, bound: number,
+    terminator: number): number {
+    const counted: number = this.literalEnd(response, contentStart, size, bound);
+    if (this.isItemBoundary(response, counted, bound)) {
+      return counted;
+    }
+    const headerMarker: number = this.headerItemMarker(response, contentStart, bound);
+    if (headerMarker >= 0) {
+      return headerMarker;
+    }
+    if (terminator >= 0) {
+      return terminator;
+    }
+    return counted;
+  }
+
+  private isItemBoundary(response: string, index: number, bound: number): boolean {
+    if (index > bound) {
+      return false;
+    }
+    return response.startsWith(' BODY[', index) || response.startsWith(')', index) ||
+      response.startsWith('\r\n)', index);
+  }
+
+  // BODY[HEADER] 项标记的位置（Gmail 会把 HEADER 放在 TEXT 之后返回）。返回的位移即 TEXT 内容终点。
+  private headerItemMarker(response: string, from: number, bound: number): number {
+    let cursor: number = from;
+    while (cursor < bound) {
+      const found: number = response.indexOf(' BODY[HEADER] {', cursor);
+      if (found < 0 || found >= bound) {
+        return -1;
+      }
+      const braceAt: number = found + ' BODY[HEADER] '.length;
+      if (/^\{\d+\}\r\n/.test(response.substring(braceAt, braceAt + 16))) {
+        return found;
+      }
+      cursor = found + 1;
+    }
+    return -1;
   }
 
   private parseMailDate(value: string): number {
