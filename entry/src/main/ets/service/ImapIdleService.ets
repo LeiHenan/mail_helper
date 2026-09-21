@@ -114,10 +114,13 @@ class IdleLoop {
         const username: string =
           settings.incoming.username.length > 0 ? settings.incoming.username : this.account.email;
         await client.connect(settings.incoming, username, credential);
-        failures = 0;
         hilog.info(DOMAIN, 'ImapIdleService', 'IDLE 已挂起：%{public}s', this.account.email);
         while (!this.stopped) {
           const hasEvent: boolean = await client.idleInbox(IDLE_CYCLE_MS);
+          // 只有完整活过一个 IDLE 周期（收到事件或正常超时）才清零失败计数：
+          // 有的网络路径（代理/防火墙）会在挂起后几十秒内掐断空闲长连接，
+          // 连接成功并不代表 IDLE 可用，快速死亡同样累计失败，三次后让位轮询。
+          failures = 0;
           if (this.stopped || !hasEvent) {
             continue;
           }
