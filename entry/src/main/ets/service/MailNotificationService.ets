@@ -5,15 +5,23 @@ const BUNDLE_NAME: string = 'com.mailhelper.app';
 const ENTRY_ABILITY: string = 'EntryAbility';
 
 export class MailNotificationService {
+  async isNotificationEnabled(): Promise<boolean> {
+    try {
+      return await notificationManager.isNotificationEnabled();
+    } catch (_error) {
+      return false;
+    }
+  }
+
   async requestPermission(context: common.UIAbilityContext): Promise<boolean> {
-    if (await notificationManager.isNotificationEnabled()) {
+    if (await this.isNotificationEnabled()) {
       return true;
     }
     try {
       await notificationManager.requestEnableNotification(context);
     } catch (_error) {
     }
-    return notificationManager.isNotificationEnabled();
+    return this.isNotificationEnabled();
   }
 
   async notifyNewMail(count: number): Promise<boolean> {

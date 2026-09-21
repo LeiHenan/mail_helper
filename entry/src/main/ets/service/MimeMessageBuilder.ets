@@ -1,6 +1,7 @@
 import { fileIo } from '@kit.CoreFileKit';
 import { util } from '@kit.ArkTS';
 import { DraftMessage, EmailAccount, MailAttachment } from '../model/MailModels';
+import { bracketMessageId, newMessageId } from '../common/MessageId';
 
 export class MimeMessageBuilder {
   private encoder: util.TextEncoder = new util.TextEncoder();
@@ -11,14 +12,21 @@ export class MimeMessageBuilder {
     const alternativeBoundary: string = `${boundary}_alternative`;
     const recipients: string[] = this.addresses(draft.to);
     const ccRecipients: string[] = this.addresses(draft.cc);
+    const messageId: string = draft.rfcMessageId.length > 0 ? draft.rfcMessageId :
+      newMessageId(account.email, `outgoing_${Date.now()}`);
     const headers: string[] = [
       `From: ${this.formatFrom(account)}`,
       `To: ${recipients.join(', ')}`,
       `Subject: ${this.encodeHeader(this.headerSafe(draft.subject.length > 0 ? draft.subject : '无主题'))}`,
       `Date: ${new Date().toUTCString()}`,
-      `Message-ID: <${Date.now()}.${account.id}@mail-helper.local>`,
+      `Message-ID: ${bracketMessageId(messageId)}`,
       'MIME-Version: 1.0'
     ];
+    const inReplyTo: string = bracketMessageId(draft.inReplyTo);
+    if (inReplyTo.length > 0) {
+      headers.push(`In-Reply-To: ${inReplyTo}`);
+      headers.push(`References: ${inReplyTo}`);
+    }
     if (ccRecipients.length > 0) {
       headers.push(`Cc: ${ccRecipients.join(', ')}`);
     }
@@ -116,7 +124,10 @@ export class MimeMessageBuilder {
   }
 
   private attachmentPart(boundary: string, attachment: MailAttachment): string {
-    const file: fileIo.File = fileIo.openSync(attachment.uri, fileIo.OpenMode.READ_ONLY);
+    // 沙箱附件存的是 file:// URI，文件接口要的是路径，这里统一还原。
+    const path: string = attachment.uri.startsWith('file://') ?
+      attachment.uri.substring(7) : attachment.uri;
+    const file: fileIo.File = fileIo.openSync(path, fileIo.OpenMode.READ_ONLY);
     try {
       const stat: fileIo.Stat = fileIo.statSync(file.fd);
       if (stat.size > 20 * 1024 * 1024) {

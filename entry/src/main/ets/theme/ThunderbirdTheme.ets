@@ -1,27 +1,5 @@
+// 颜色统一由 resources/base|dark/element/color.json 提供，本类只保留尺寸与字号常量。
 export class ThunderbirdTheme {
-  // Stitch: Efficient Harmony Assistant
-  static readonly primary: string = '#007DFF';
-  static readonly primaryPressed: string = '#0064D9';
-  static readonly onPrimary: string = '#FFFFFF';
-  static readonly primaryContainer: string = '#E8F3FF';
-  static readonly onPrimaryContainer: string = '#004491';
-  static readonly surface: string = '#F8F9FB';
-  static readonly surfaceLowest: string = '#FFFFFF';
-  static readonly surfaceLow: string = '#F2F4F6';
-  static readonly surfaceContainer: string = '#ECEEF0';
-  static readonly surfaceHigh: string = '#E6E8EA';
-  static readonly surfaceHighest: string = '#E0E3E5';
-  static readonly onSurface: string = '#191C1E';
-  static readonly onSurfaceVariant: string = '#414754';
-  static readonly outline: string = '#717786';
-  static readonly outlineVariant: string = '#DDE1E7';
-  static readonly cardBorder: string = '#E5E5E5';
-  static readonly infoContainer: string = '#EAF3FF';
-  static readonly error: string = '#BA1A1A';
-  static readonly errorContainer: string = '#FFDAD6';
-  static readonly warning: string = '#8A5100';
-  static readonly success: string = '#16784A';
-
   static readonly pagePadding: number = 16;
   static readonly cardPadding: number = 12;
   static readonly spaceSmall: number = 4;

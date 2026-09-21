@@ -6,15 +6,15 @@ export default function providerConfigTest(): void {
   describe('ProviderConfig', () => {
     it('uses secure QQ endpoints', 0, () => {
       const provider = findProvider(EmailProviderType.QQ);
-      expect(provider.imap?.host).assertEqual('imap.qq.com');
-      expect(provider.imap?.port).assertEqual(993);
-      expect(provider.smtp?.port).assertEqual(465);
+      expect(provider.incoming?.host).assertEqual('imap.qq.com');
+      expect(provider.incoming?.port).assertEqual(993);
+      expect(provider.outgoing?.port).assertEqual(465);
     });
 
     it('uses secure 163 endpoints', 0, () => {
       const provider = findProvider(EmailProviderType.NETEASE_163);
-      expect(provider.imap?.host).assertEqual('imap.163.com');
-      expect(provider.smtp?.host).assertEqual('smtp.163.com');
+      expect(provider.incoming?.host).assertEqual('imap.163.com');
+      expect(provider.outgoing?.host).assertEqual('smtp.163.com');
     });
   });
 }

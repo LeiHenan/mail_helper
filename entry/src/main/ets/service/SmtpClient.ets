@@ -15,6 +15,10 @@ export class SmtpClient {
     if (settings.security === ConnectionSecurity.NONE) {
       throw new Error('为保护授权凭据，不支持未加密的 SMTP 登录');
     }
+    // 先把整封 MIME 构建完（这一步会读附件文件、可能抛错）。构建必须发生在建立连接之前：
+    // 否则失败会把会话停在 DATA 状态，之后的 QUIT 会被服务器当成邮件内容。
+    const mime: string = this.mimeBuilder.build(account, draft);
+    const dotStuffed: string = mime.replace(/\r\n\./g, '\r\n..');
     if (settings.security === ConnectionSecurity.TLS) {
       await this.channel.connect(settings.host, settings.port);
     } else {
@@ -53,8 +57,6 @@ export class SmtpClient {
       this.requireAnyCode(response, [250, 251], `收件人 ${recipients[index]} 被服务器拒绝`);
     }
     this.requireCode(await this.command('DATA', 354), 354, 'SMTP 服务器未进入邮件内容接收状态');
-    const mime: string = this.mimeBuilder.build(account, draft);
-    const dotStuffed: string = mime.replace(/\r\n\./g, '\r\n..');
     const accepted: string = await this.channel.sendAndWait(`${dotStuffed}\r\n.\r\n`,
       (value: string) => this.hasCode(value, 250), 30000);
     this.requireCode(accepted, 250, 'SMTP 服务器未接受邮件内容');

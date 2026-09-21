@@ -1,10 +1,10 @@
 {
   "gmail": {
-    "clientId": "your-google-oauth-client-id",
-    "clientSecret": "your-google-oauth-client-secret"
+    "clientId": "Google Cloud 桌面应用类型的 OAuth Client ID（无需 Secret）",
+    "clientSecret": ""
   },
   "outlook": {
-    "clientId": "your-microsoft-oauth-client-id",
+    "clientId": "Microsoft Entra 移动/桌面应用的 Application (client) ID（公共客户端，无需 Secret）",
     "clientSecret": ""
   }
 }

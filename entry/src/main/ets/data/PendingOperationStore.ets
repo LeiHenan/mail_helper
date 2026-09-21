@@ -6,4 +6,5 @@ export interface PendingOperationStore {
   listPendingOperations(accountId: string): Promise<PendingMailOperation[]>;
   acknowledgePendingOperation(operationId: string): Promise<void>;
   recordPendingOperationFailure(operationId: string): Promise<void>;
+  reschedulePendingOperation(operationId: string, retryCount: number, nextRetryAt: number): Promise<void>;
 }

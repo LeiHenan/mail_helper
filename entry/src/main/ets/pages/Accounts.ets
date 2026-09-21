@@ -11,16 +11,29 @@ struct Accounts {
   @State private showSearch: boolean = false;
   @State private searchText: string = '';
   @State private lastSyncTexts: string[] = [];
+  @State private appearanceMode: string = 'system';
 
   onPageShow(): void {
     this.loadAccounts();
+    this.loadAppearance();
+  }
+
+  private async loadAppearance(): Promise<void> {
+    this.appearanceMode = await this.repository.getSetting('appearance_mode', 'system');
+  }
+
+  private appearanceSubtitle(): string {
+    if (this.appearanceMode === 'light') return '浅色';
+    if (this.appearanceMode === 'dark') return '深色';
+    return '跟随系统';
   }
 
   private async loadAccounts(): Promise<void> {
     this.accounts = await this.repository.listAccounts();
+    const settings: Map<string, string> = await this.repository.getSettingsByPrefix('last_sync_');
     const texts: string[] = [];
     for (let index: number = 0; index < this.accounts.length; index++) {
-      const value: string = await this.repository.getSetting(`last_sync_${this.accounts[index].id}`, '0');
+      const value: string = settings.get(`last_sync_${this.accounts[index].id}`) ?? '0';
       texts.push(this.formatLastSync(Number.parseInt(value)));
     }
     this.lastSyncTexts = texts;
@@ -45,9 +58,6 @@ struct Accounts {
     return `${Math.floor(elapsedHours / 24)} 天前同步`;
   }
 
-  private showToast(_message: string): void {
-  }
-
   private matches(value: string): boolean {
     const keyword: string = this.searchText.trim().toLowerCase();
     return keyword.length === 0 || value.toLowerCase().includes(keyword);
@@ -63,23 +73,23 @@ struct Accounts {
   private settingRow(icon: Resource, title: string, subtitle: string, action: () => void) {
     Row({ space: 12 }) {
       Stack() {
-        Circle().width(38).height(38).fill(ThunderbirdTheme.surfaceLow)
+        Circle().width(38).height(38).fill($r('app.color.surfaceLow'))
         Image(icon).width(21).height(21).objectFit(ImageFit.Contain)
-          .fillColor(ThunderbirdTheme.primary)
+          .fillColor($r('app.color.primary'))
       }
       Column({ space: 3 }) {
-        Text(title).fontSize(15).fontColor(ThunderbirdTheme.onSurface)
+        Text(title).fontSize(15).fontColor($r('app.color.onSurface'))
         if (subtitle.length > 0) {
-          Text(subtitle).fontSize(12).fontColor(ThunderbirdTheme.onSurfaceVariant).maxLines(1)
+          Text(subtitle).fontSize(12).fontColor($r('app.color.onSurfaceVariant')).maxLines(1)
         }
       }.layoutWeight(1).alignItems(HorizontalAlign.Start)
-      Image($r('app.media.ic_chevron_right')).width(20).height(20).objectFit(ImageFit.Contain)
+      Image($r('app.media.ic_chevron_right')).width(20).height(20).objectFit(ImageFit.Contain).fillColor($r('app.color.outline'))
     }
     .width('100%').constraintSize({ minHeight: subtitle.length > 0 ? 68 : 60 })
     .padding({ left: 12, right: 12, top: 10, bottom: 10 })
     .margin({ bottom: 8 })
-    .backgroundColor(ThunderbirdTheme.surfaceLowest)
-    .border({ width: 1, color: ThunderbirdTheme.cardBorder })
+    .backgroundColor($r('app.color.surfaceLowest'))
+    .border({ width: 1, color: $r('app.color.cardBorder') })
     .borderRadius(ThunderbirdTheme.cardRadius).onClick(action)
   }
 
@@ -90,29 +100,29 @@ struct Accounts {
         Circle().width(44).height(44).fill(account.color)
         Text(findProvider(account.provider).shortName)
           .fontSize(findProvider(account.provider).shortName.length > 2 ? 10 : 14)
-          .fontWeight(FontWeight.Bold).fontColor(ThunderbirdTheme.onPrimary)
+          .fontWeight(FontWeight.Bold).fontColor($r('app.color.onPrimary'))
       }
       Column({ space: 3 }) {
         Text(account.displayName).fontSize(15).fontWeight(FontWeight.Medium)
-          .fontColor(ThunderbirdTheme.onSurface).maxLines(1)
-        Text(account.email).fontSize(12).fontColor(ThunderbirdTheme.onSurfaceVariant).maxLines(1)
+          .fontColor($r('app.color.onSurface')).maxLines(1)
+        Text(account.email).fontSize(12).fontColor($r('app.color.onSurfaceVariant')).maxLines(1)
         Text(this.syncText(account)).fontSize(12)
-          .fontColor(account.syncEnabled ? ThunderbirdTheme.primary : ThunderbirdTheme.outline).maxLines(1)
+          .fontColor(account.syncEnabled ? $r('app.color.primary') : $r('app.color.outline')).maxLines(1)
       }.layoutWeight(1).alignItems(HorizontalAlign.Start)
       Toggle({ type: ToggleType.Switch, isOn: account.syncEnabled })
-        .width(48).height(30).selectedColor(ThunderbirdTheme.primary)
+        .width(48).height(30).selectedColor($r('app.color.primary'))
         .onChange(async (isOn: boolean) => {
           await this.repository.setAccountSyncEnabled(account.id, isOn);
           account.syncEnabled = isOn;
           this.accounts = this.accounts.slice();
         })
-      Image($r('app.media.ic_chevron_right')).width(20).height(20).objectFit(ImageFit.Contain)
+      Image($r('app.media.ic_chevron_right')).width(20).height(20).objectFit(ImageFit.Contain).fillColor($r('app.color.outline'))
     }
     .width('100%').constraintSize({ minHeight: 80 })
     .padding({ left: 12, right: 10, top: 10, bottom: 10 })
     .margin({ bottom: 8 })
-    .backgroundColor(ThunderbirdTheme.surfaceLowest)
-    .border({ width: 1, color: ThunderbirdTheme.cardBorder })
+    .backgroundColor($r('app.color.surfaceLowest'))
+    .border({ width: 1, color: $r('app.color.cardBorder') })
     .borderRadius(ThunderbirdTheme.cardRadius)
     .onClick(() => this.getUIContext().getRouter().pushUrl({
       url: 'pages/AccountDetail', params: { accountId: account.id }
@@ -123,15 +133,15 @@ struct Accounts {
     Column() {
       Row() {
         Button() {
-          Image($r('app.media.ic_back')).width(23).height(23).objectFit(ImageFit.Contain)
+          Image($r('app.media.ic_back')).width(23).height(23).objectFit(ImageFit.Contain).fillColor($r('app.color.onSurface'))
         }
           .width(48).height(48).backgroundColor(Color.Transparent)
           .onClick(() => this.getUIContext().getRouter().back())
         Text('账户与设置').layoutWeight(1).fontSize(20).fontWeight(FontWeight.Bold)
-          .fontColor(ThunderbirdTheme.onSurface)
+          .fontColor($r('app.color.onSurface'))
         Button() {
           Image(this.showSearch ? $r('app.media.ic_close') : $r('app.media.ic_search'))
-            .width(22).height(22).objectFit(ImageFit.Contain)
+            .width(22).height(22).objectFit(ImageFit.Contain).fillColor($r('app.color.onSurface'))
         }
           .width(44).height(48).backgroundColor(Color.Transparent)
           .onClick(() => {
@@ -139,44 +149,56 @@ struct Accounts {
             if (!this.showSearch) this.searchText = '';
           })
       }
-      .width('100%').height(56).padding({ left: 4, right: 8 }).backgroundColor(ThunderbirdTheme.surface)
+      .width('100%').height(56).padding({ left: 4, right: 8 }).backgroundColor($r('app.color.surface'))
 
       if (this.showSearch) {
         Row() {
           Row({ space: 8 }) {
-            Image($r('app.media.ic_search')).width(20).height(20).objectFit(ImageFit.Contain)
+            Image($r('app.media.ic_search')).width(20).height(20).objectFit(ImageFit.Contain).fillColor($r('app.color.onSurfaceVariant'))
             TextInput({ placeholder: '搜索账户或设置', text: this.searchText })
               .layoutWeight(1).height(44).backgroundColor(Color.Transparent)
               .onChange((value: string) => this.searchText = value)
           }.width('100%').height(46).padding({ left: 14, right: 14 })
-            .backgroundColor(ThunderbirdTheme.surfaceContainer)
+            .backgroundColor($r('app.color.surfaceContainer'))
             .borderRadius(ThunderbirdTheme.pillRadius)
         }.width('100%').padding({ left: 16, right: 16, bottom: 8 })
       }
 
       Scroll() {
         Column() {
-          Text('账户').width('100%').fontSize(13).fontWeight(FontWeight.Bold).fontColor(ThunderbirdTheme.primary)
+          Text('账户').width('100%').fontSize(13).fontWeight(FontWeight.Bold).fontColor($r('app.color.primary'))
             .padding({ left: 2, top: 14, bottom: 10 })
           ForEach(this.accounts, (account: EmailAccount) => {
             if (this.matches(`${account.displayName} ${account.email}`)) {
               this.accountRow(account)
             }
           }, (account: EmailAccount) => `${account.id}_${account.syncEnabled ? 'on' : 'off'}`)
+          if (this.accounts.length === 0 && this.matches('还没有邮箱账户 添加')) {
+            Column({ space: 10 }) {
+              Image($r('app.media.ic_mail')).width(44).height(44).objectFit(ImageFit.Contain)
+                .fillColor($r('app.color.outline'))
+              Text('还没有邮箱账户').fontSize(17).fontWeight(FontWeight.Medium)
+                .fontColor($r('app.color.onSurface'))
+              Text('添加账户后即可收发邮件、同步日历提醒').fontSize(13)
+                .fontColor($r('app.color.onSurfaceVariant')).textAlign(TextAlign.Center)
+            }
+            .width('100%').padding({ top: 18, bottom: 18 })
+            .justifyContent(FlexAlign.Center)
+          }
           if (this.matches('添加账户 QQ 163 Gmail Outlook IMAP')) {
             Button() {
               Row({ space: 8 }) {
                 Image($r('app.media.ic_add')).width(20).height(20).objectFit(ImageFit.Contain)
-                  .fillColor(ThunderbirdTheme.onPrimary)
-                Text('添加账户').fontSize(14).fontWeight(FontWeight.Bold).fontColor(ThunderbirdTheme.onPrimary)
+                  .fillColor($r('app.color.onPrimary'))
+                Text('添加账户').fontSize(14).fontWeight(FontWeight.Bold).fontColor($r('app.color.onPrimary'))
               }
             }
-            .width('100%').height(48).backgroundColor(ThunderbirdTheme.primary)
+            .width('100%').height(48).backgroundColor($r('app.color.primary'))
             .borderRadius(ThunderbirdTheme.controlRadius).margin({ top: 2, bottom: 4 })
             .onClick(() => this.getUIContext().getRouter().pushUrl({ url: 'pages/AddAccount' }).catch(() => {}))
           }
 
-          Text('常规设置').width('100%').fontSize(13).fontWeight(FontWeight.Bold).fontColor(ThunderbirdTheme.primary)
+          Text('常规设置').width('100%').fontSize(13).fontWeight(FontWeight.Bold).fontColor($r('app.color.primary'))
             .padding({ left: 2, top: 26, bottom: 10 })
           if (this.matches('邮件列表 显示密度 预览')) {
             this.settingRow($r('app.media.ic_mail'), '邮件列表', '显示密度与正文预览', () => this.openSection('mail_list'))
@@ -193,8 +215,11 @@ struct Accounts {
           if (this.matches('隐私 安全 远程图片 邮件保护')) {
             this.settingRow($r('app.media.ic_lock'), '隐私与安全', '远程图片与内容保护', () => this.openSection('privacy'))
           }
+          if (this.matches('外观 主题 深色 浅色 跟随系统')) {
+            this.settingRow($r('app.media.ic_format'), '外观', this.appearanceSubtitle(), () => this.openSection('appearance'))
+          }
 
-          Text('其他').width('100%').fontSize(13).fontWeight(FontWeight.Bold).fontColor(ThunderbirdTheme.primary)
+          Text('其他').width('100%').fontSize(13).fontWeight(FontWeight.Bold).fontColor($r('app.color.primary'))
             .padding({ left: 2, top: 26, bottom: 10 })
           if (this.matches('帮助 账户连接 授权码')) {
             this.settingRow($r('app.media.ic_help'), '帮助', '', () => this.openSection('help'))
@@ -206,6 +231,6 @@ struct Accounts {
         .width('100%').padding({ left: 16, right: 16, bottom: 28 })
       }.layoutWeight(1).width('100%').scrollBar(BarState.Off)
     }
-    .width('100%').height('100%').backgroundColor(ThunderbirdTheme.surface)
+    .width('100%').height('100%').backgroundColor($r('app.color.surface'))
   }
 }

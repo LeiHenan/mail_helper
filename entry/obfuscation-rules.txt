@@ -1,3 +1,3 @@
-# Keep model names while protocol serialization is under development.
--keep class com.mailhelper.** { *; }
-
+# JSON 序列化（OAuth 凭据、本地缓存）与跨版本持久化依赖稳定的属性名，
+# 本应用对全部源码关闭混淆重命名。
+-keep ./src/main/ets

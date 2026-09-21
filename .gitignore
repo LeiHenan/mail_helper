@@ -10,4 +10,4 @@ oh_modules/
 **/oh_modules/
 *.hap
 *.hsp
-entry/src/main/ets/config/oauth-clients.json
+entry/src/main/resources/rawfile/oauth-clients.json

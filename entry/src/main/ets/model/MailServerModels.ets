@@ -124,9 +124,11 @@ export class PendingMailOperation {
   destinationFolder: string;
   createdAt: number;
   retryCount: number;
+  nextRetryAt: number;
 
   constructor(id: string, accountId: string, messageId: string, type: PendingOperationType,
-    destinationFolder: string = '', createdAt: number = Date.now(), retryCount: number = 0) {
+    destinationFolder: string = '', createdAt: number = Date.now(), retryCount: number = 0,
+    nextRetryAt: number = 0) {
     this.id = id;
     this.accountId = accountId;
     this.messageId = messageId;
@@ -134,6 +136,7 @@ export class PendingMailOperation {
     this.destinationFolder = destinationFolder;
     this.createdAt = createdAt;
     this.retryCount = retryCount;
+    this.nextRetryAt = nextRetryAt;
   }
 }
 

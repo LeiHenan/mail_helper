@@ -1,9 +1,10 @@
 import { LocalMailRepository } from '../data/LocalMailRepository';
-import { EmailAccount, EmailProviderType, MailFolder, MailMessage } from '../model/MailModels';
+import { EmailAccount, EmailProviderType, MailAttachmentPayload, MailFolder, MailMessage } from '../model/MailModels';
 import { AccountServerSettings, AuthenticationMethod, PendingMailOperation,
   PendingOperationType } from '../model/MailServerModels';
 import { ImapClient, ImapMessagePage, ImapMessageRecord } from './ImapClient';
 import { describeError } from './ErrorFormatter';
+import { MailSendService, SendDeliveryResult } from './MailSendService';
 import { OAuthResolvedCredential, OAuthService } from './OAuthService';
 
 export class AccountSyncResult {
@@ -13,24 +14,34 @@ export class AccountSyncResult {
   errorMessage: string;
   hasMoreHistory: boolean;
   fetchedCount: number;
+  // true 表示本次调用因为同账户已有同步在跑而被跳过（不是失败，errorMessage 保持为空）。
+  skipped: boolean;
 
   constructor(accountId: string, accountName: string, receivedCount: number = 0, errorMessage: string = '',
-    hasMoreHistory: boolean = false, fetchedCount: number = 0) {
+    hasMoreHistory: boolean = false, fetchedCount: number = 0, skipped: boolean = false) {
     this.accountId = accountId;
     this.accountName = accountName;
     this.receivedCount = receivedCount;
     this.errorMessage = errorMessage;
     this.hasMoreHistory = hasMoreHistory;
     this.fetchedCount = fetchedCount;
+    this.skipped = skipped;
   }
 }
+
+// 按 accountId 的单飞表：前台的定时/下拉同步、账户详情页的“立即同步”和后台 WorkScheduler
+// 都可能同时触发同一账户的同步，重复同步会争抢同一个 IMAP 连接状态与同步游标。
+// 放在模块级是因为各页面/扩展各自 new 了 MailAccountSyncService 实例。
+const inFlightSyncs: Map<string, Promise<AccountSyncResult>> = new Map<string, Promise<AccountSyncResult>>();
 
 export class MailAccountSyncService {
   private repository: LocalMailRepository;
   private oauthService: OAuthService = new OAuthService();
+  private sendService: MailSendService;
 
   constructor(repository: LocalMailRepository) {
     this.repository = repository;
+    this.sendService = new MailSendService(repository);
   }
 
   async pushPendingOperations(account: EmailAccount): Promise<AccountSyncResult> {
@@ -64,7 +75,24 @@ export class MailAccountSyncService {
     }
   }
 
-  async synchronize(account: EmailAccount): Promise<AccountSyncResult> {
+  // 同一账户的同步单飞：已有同步在跑时本次直接跳过（skipped=true，errorMessage 为空，
+  // 不会被 UI 当成失败），避免两个 IMAP 会话争抢同一账户的游标/文件夹状态。
+  // shouldCancel 由后台任务传入（onWorkStop 置位），用于在文件夹边界中断同步。
+  async synchronize(account: EmailAccount, shouldCancel?: () => boolean): Promise<AccountSyncResult> {
+    if (inFlightSyncs.has(account.id)) {
+      return new AccountSyncResult(account.id, account.displayName, 0, '', false, 0, true);
+    }
+    const run: Promise<AccountSyncResult> = this.runSynchronize(account, shouldCancel);
+    inFlightSyncs.set(account.id, run);
+    try {
+      return await run;
+    } finally {
+      inFlightSyncs.delete(account.id);
+    }
+  }
+
+  private async runSynchronize(account: EmailAccount,
+    shouldCancel?: () => boolean): Promise<AccountSyncResult> {
     if (!account.syncEnabled) {
       return new AccountSyncResult(account.id, account.displayName, 0, '账户同步已暂停');
     }
@@ -92,8 +120,12 @@ export class MailAccountSyncService {
         (await this.repository.getSetting(`coremail_date_parser_v3_${account.id}`, 'false')) !== 'true';
       let insertedCount: number = 0;
       for (let folderIndex: number = 0; folderIndex < folders.length; folderIndex++) {
+        // 取消（后台任务被系统停止）时在文件夹边界中断：不写同步状态，游标停在原处，
+        // 下轮同步重取该文件夹，不会漏邮件。
+        if (this.isCancelled(shouldCancel)) {
+          break;
+        }
         const folder: MailFolder = folders[folderIndex];
-        let page: ImapMessagePage;
         try {
           const initialized: boolean =
             (await this.repository.getSetting(this.stateKey('initialized', account.id, folder), 'false')) === 'true';
@@ -101,21 +133,27 @@ export class MailAccountSyncService {
             await this.repository.getSetting(this.stateKey('last_uid', account.id, folder), '0'), 10);
           const savedUidValidity: string =
             await this.repository.getSetting(this.stateKey('uidvalidity', account.id, folder), '');
-          if (!initialized || refreshCoremailDates) {
+          const incremental: boolean = initialized && !refreshCoremailDates;
+          let page: ImapMessagePage = incremental ?
+            await client.fetchIncremental(folder, Number.isNaN(savedLastUid) ? 0 : savedLastUid) :
+            await client.fetchInitial(folder, 30, 200);
+          const uidValidityChanged: boolean = incremental && savedUidValidity.length > 0 &&
+            page.uidValidity.length > 0 && savedUidValidity !== page.uidValidity;
+          if (uidValidityChanged) {
+            // UIDVALIDITY 变了：旧 UID 全部失效，先整目录清库（走仓库写入串行器）再走初始同步。
+            // 否则同主键行 imap_<accountId>_<uid> 会被新邮件覆盖，没被覆盖的旧行成为幽灵邮件。
+            const purged: number = await this.repository.purgeFolderMessages(account.id, folder);
+            await this.repository.setSetting(this.stateKey('history_complete', account.id, folder), 'false');
+            await this.repository.setSetting(`last_folder_uidvalidity_reset_${account.id}_${folder}`,
+              `${purged}`);
             page = await client.fetchInitial(folder, 30, 200);
-          } else {
-            page = await client.fetchIncremental(folder, Number.isNaN(savedLastUid) ? 0 : savedLastUid);
-            if (savedUidValidity.length > 0 && page.uidValidity.length > 0 &&
-              savedUidValidity !== page.uidValidity) {
-              page = await client.fetchInitial(folder, 30, 200);
-              await this.repository.setSetting(this.stateKey('history_complete', account.id, folder), 'false');
-            } else if (!Number.isNaN(savedLastUid)) {
-              page.highestUid = Math.max(savedLastUid, page.highestUid);
-            }
           }
           insertedCount += await this.storeRecords(account, folder, page.records);
-          await this.saveSyncState(account.id, folder, page, initialized &&
-            (savedUidValidity.length === 0 || savedUidValidity === page.uidValidity));
+          await this.reportSkippedUids(account.id, folder, page);
+          const wasIncremental: boolean = initialized &&
+            (savedUidValidity.length === 0 || savedUidValidity === page.uidValidity);
+          await this.saveSyncState(account.id, folder, page,
+            this.advanceCursor(page, savedLastUid, wasIncremental), wasIncremental);
         } catch (error) {
           if (folder === MailFolder.INBOX) throw new Error(describeError(error));
           await this.repository.setSetting(`last_folder_error_${account.id}_${folder}`, describeError(error));
@@ -181,6 +219,7 @@ export class MailAccountSyncService {
         return new AccountSyncResult(account.id, account.displayName, 0, '邮箱文件夹已重建，请先同步');
       }
       const insertedCount: number = await this.storeRecords(account, folder, page.records);
+      await this.reportSkippedUids(account.id, folder, page);
       if (page.lowestUid > 0) {
         await this.repository.setSetting(this.stateKey('oldest_uid', account.id, folder), `${page.lowestUid}`);
       }
@@ -195,10 +234,51 @@ export class MailAccountSyncService {
     }
   }
 
+  // last_uid 以“实际入库的最大 UID”为准，而不是 SEARCH 结果的最大值：解析失败的邮件不会入库，
+  // 游标若越过它们，这些邮件再也不会被重取（增量同步下等于永久丢新邮件）。
+  // monotonic 为 true（增量且 UIDVALIDITY 未变）时游标只前进，不因单批全失败而倒退。
+  private advanceCursor(page: ImapMessagePage, savedLastUid: number, monotonic: boolean): number {
+    const previous: number = Number.isNaN(savedLastUid) ? 0 : savedLastUid;
+    const highestStored: number = this.highestUid(page.records);
+    let cursor: number = 0;
+    if (highestStored > 0) {
+      cursor = highestStored;
+    } else if (page.records.length > 0 || page.skippedUids.length > 0) {
+      // 本批全部读取/解析失败：游标停在原处，下次同步重试这些 UID。
+      cursor = previous;
+    } else {
+      // 本轮没有需要拉取的邮件（窗口期内无新邮件）：沿用服务器给出的 UID 边界。
+      cursor = page.highestUid;
+    }
+    return monotonic ? Math.max(previous, cursor) : cursor;
+  }
+
+  private highestUid(records: ImapMessageRecord[]): number {
+    let highest: number = 0;
+    for (let index: number = 0; index < records.length; index++) {
+      const uid: number = Number.parseInt(records[index].uid, 10);
+      if (!Number.isNaN(uid) && uid > highest) {
+        highest = uid;
+      }
+    }
+    return highest;
+  }
+
+  // 被跳过的邮件只跳过、不阻塞文件夹同步，这里留下可诊断记录。
+  // 游标以实际入库的最大 UID 为准：若失败的是本批最新的几封，游标会停在它们之前，下轮自动重试；
+  // 若失败邮件之下还有成功入库的更大 UID，则不再自动重取，只保留这里的记录。
+  private async reportSkippedUids(accountId: string, folder: MailFolder,
+    page: ImapMessagePage): Promise<void> {
+    const sample: string = page.skippedUids.slice(0, 10).join(', ');
+    await this.repository.setSetting(`last_folder_skipped_${accountId}_${folder}`,
+      page.skippedUids.length === 0 ? '' :
+        `${page.skippedUids.length} 封邮件读取失败，UID: ${sample}`);
+  }
+
   private async saveSyncState(accountId: string, folder: MailFolder, page: ImapMessagePage,
-    wasIncremental: boolean): Promise<void> {
+    lastUid: number, wasIncremental: boolean): Promise<void> {
     await this.repository.setSetting(this.stateKey('initialized', accountId, folder), 'true');
-    await this.repository.setSetting(this.stateKey('last_uid', accountId, folder), `${page.highestUid}`);
+    await this.repository.setSetting(this.stateKey('last_uid', accountId, folder), `${lastUid}`);
     await this.repository.setSetting(this.stateKey('uidvalidity', accountId, folder), page.uidValidity);
     if (!wasIncremental) {
       await this.repository.setSetting(this.stateKey('oldest_uid', accountId, folder), `${page.lowestUid}`);
@@ -225,6 +305,7 @@ export class MailAccountSyncService {
     records: ImapMessageRecord[]): Promise<number> {
     const messages: MailMessage[] = [];
     const sortOrders: number[] = [];
+    const attachments: MailAttachmentPayload[][] = [];
     for (let index: number = 0; index < records.length; index++) {
       const record: ImapMessageRecord = records[index];
       const body: string = record.body;
@@ -234,10 +315,11 @@ export class MailAccountSyncService {
       messages.push(new MailMessage(messageId, account.id, folder,
         record.sender, record.recipients, record.subject, preview, body,
         this.displayTime(record.receivedAt), record.isRead, record.isStarred, record.hasAttachments,
-        record.htmlBody));
+        record.htmlBody, record.rfcMessageId));
       sortOrders.push(record.receivedAt);
+      attachments.push(record.attachments);
     }
-    return this.repository.upsertRemoteMessages(messages, sortOrders);
+    return this.repository.upsertRemoteMessages(messages, sortOrders, attachments);
   }
 
   private stateKey(name: string, accountId: string, folder: MailFolder): string {
@@ -249,12 +331,22 @@ export class MailAccountSyncService {
     return folder === MailFolder.INBOX || folder === MailFolder.SPAM || folder === MailFolder.TRASH;
   }
 
+  private isCancelled(shouldCancel?: () => boolean): boolean {
+    return shouldCancel !== undefined && shouldCancel();
+  }
+
   private async executePendingOperations(client: ImapClient, accountId: string): Promise<string> {
+    const delivery: SendDeliveryResult = await this.sendService.deliverPendingSends(accountId);
+    let firstError: string = delivery.firstError;
     const operations: PendingMailOperation[] = await this.repository.listPendingOperations(accountId);
-    let firstError: string = '';
     for (let operationIndex: number = 0; operationIndex < operations.length; operationIndex++) {
       const operation: PendingMailOperation = operations[operationIndex];
       if (operation.type === PendingOperationType.SEND) {
+        continue;
+      }
+      if (!client.isRemoteMessage(operation.messageId)) {
+        // 种子/本地发送的邮件在服务器上没有 UID，状态变更只保留在本地
+        await this.repository.acknowledgePendingOperation(operation.id);
         continue;
       }
       try {

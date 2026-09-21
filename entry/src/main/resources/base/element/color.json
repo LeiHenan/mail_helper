@@ -1,6 +1,26 @@
 {
   "color": [
-    { "name": "start_window_background", "value": "#F6F7FB" }
+    { "name": "start_window_background", "value": "#F8F9FB" },
+    { "name": "primary", "value": "#007DFF" },
+    { "name": "primaryPressed", "value": "#0064D9" },
+    { "name": "onPrimary", "value": "#FFFFFF" },
+    { "name": "primaryContainer", "value": "#E8F3FF" },
+    { "name": "onPrimaryContainer", "value": "#004491" },
+    { "name": "surface", "value": "#F8F9FB" },
+    { "name": "surfaceLowest", "value": "#FFFFFF" },
+    { "name": "surfaceLow", "value": "#F2F4F6" },
+    { "name": "surfaceContainer", "value": "#ECEEF0" },
+    { "name": "surfaceHigh", "value": "#E6E8EA" },
+    { "name": "surfaceHighest", "value": "#E0E3E5" },
+    { "name": "onSurface", "value": "#191C1E" },
+    { "name": "onSurfaceVariant", "value": "#414754" },
+    { "name": "outline", "value": "#717786" },
+    { "name": "outlineVariant", "value": "#DDE1E7" },
+    { "name": "cardBorder", "value": "#E5E5E5" },
+    { "name": "infoContainer", "value": "#EAF3FF" },
+    { "name": "error", "value": "#BA1A1A" },
+    { "name": "errorContainer", "value": "#FFDAD6" },
+    { "name": "warning", "value": "#8A5100" },
+    { "name": "success", "value": "#16784A" }
   ]
 }
-
