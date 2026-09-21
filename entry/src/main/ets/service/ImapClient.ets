@@ -238,6 +238,38 @@ export class ImapClient {
       uidValidity, olderUids.length > selectedUids.length, skippedUids);
   }
 
+  // IMAP IDLE（RFC 2177）：在 INBOX 上挂起等待新邮件事件，用于前台近实时收信。
+  // 返回 true 表示等到了 EXISTS/RECENT/EXPUNGE/FETCH 事件；false 表示超时（需重新 IDLE 保活）。
+  // 服务器主动断开（BYE/连接关闭）会抛异常，由调用方决定重建连接或退避。
+  async idleInbox(maxWaitMs: number): Promise<boolean> {
+    await this.selectFolder(MailFolder.INBOX);
+    this.tagSequence++;
+    const tag: string = `A${this.tagSequence.toString().padStart(4, '0')}`;
+    await this.channel.send(`${tag} IDLE\r\n`);
+    await this.channel.waitFor((value: string) => /(^|\r\n)\+/.test(value), 15000);
+    let hasEvent: boolean = true;
+    const previousIdleTimeout: number = this.channel.readIdleTimeoutMs;
+    // IDLE 期间服务器长时间不说话是常态，把空闲超时放宽到等待时长之外。
+    this.channel.readIdleTimeoutMs = maxWaitMs + 15000;
+    try {
+      await this.channel.waitFor((value: string) =>
+        /(^|\r\n)\* \d+ (?:EXISTS|RECENT|EXPUNGE|FETCH)/i.test(value), maxWaitMs);
+    } catch (error) {
+      if (error instanceof Error &&
+        (error.message === '邮件服务器响应超时' || error.message === '邮件服务器长时间无响应')) {
+        hasEvent = false;
+      } else {
+        throw error instanceof Error ? error : new Error(`IDLE 等待事件失败：${error}`);
+      }
+    } finally {
+      this.channel.readIdleTimeoutMs = previousIdleTimeout;
+    }
+    await this.channel.send('DONE\r\n');
+    await this.channel.waitFor((value: string) =>
+      value.includes(`\r\n${tag} `) || value.startsWith(`${tag} `), 15000);
+    return hasEvent;
+  }
+
   private async searchUids(folder: MailFolder, criteria: string): Promise<string[]> {
     const searched: string = await this.command(`UID SEARCH ${criteria}`);
     this.requireOk(searched, `无法读取${this.folderLabel(folder)}邮件列表`);

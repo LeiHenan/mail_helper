@@ -12,7 +12,7 @@
 - 本地持久化：ArkData RDB（`mail_helper.db`，当前版本 8），`LocalMailRepository` 是唯一数据源
 - 凭证安全：HUKS AES-256-CBC 加密后存入 Preferences
 - 浅色/深色主题，设置中可选跟随系统、浅色或深色
-- 前台 60 秒轮询 + WorkScheduler 每 30 分钟后台同步与新邮件通知
+- 前台 IMAP IDLE 近实时收信（30 秒轮询兜底）+ WorkScheduler 每 30 分钟后台同步与新邮件通知
 
 ## 打开和运行
 
@@ -88,7 +88,7 @@ Gmail 也可以完全不配置这个文件：在添加账户向导第 2 步顶�
 - 收件：IMAP over TLS（默认 993）或 STARTTLS。首轮同步取最近 30 天最多 200 封，之后用 `UID SEARCH UID <last_uid>:*` 增量拉取；批量读取用 `UID FETCH`（每批 20 封，一次往返取回 HEADER 与正文），UIDVALIDITY 变化时回退到初始同步。
 - 发件：SMTP（TLS 或 STARTTLS）。发送先写入本地 `pending_operations` 队列（outbox），联网后由 `MailSendService` 按时间顺序投递，失败按 1/2/4…60 分钟退避重试，最多 8 次，最终失败写入邮件的 `send_status`。
 - 附件：从 MIME 解析后写入应用沙箱 `filesDir/attachments/<messageId>/`，数据库只保存元数据与文件 URI，打开时通过 `fileUri` 授予临时读权限。
-- 通知：前台每 60 秒轮询一次，后台由 WorkScheduler 每 30 分钟同步一次并发布本地通知。
+- 通知：前台 IMAP IDLE 事件触发即时同步（30 秒轮询兜底），后台由 WorkScheduler 每 30 分钟同步一次并发布本地通知。
 
 `MailRepository` 是页面唯一依赖的数据接口，`LocalMailRepository` 是其唯一实现。
 
@@ -104,7 +104,7 @@ Gmail 也可以完全不配置这个文件：在添加账户向导第 2 步顶�
 ## 已知限制
 
 - **未签名构建**：`signingConfigs` 为空，只能产出未签名 HAP；真机安装前需要先在 DevEco Studio 里完成自动签名（见「打开和运行」）。
-- **没有 IMAP IDLE**：前台靠 60 秒轮询，后台靠 WorkScheduler 每 30 分钟同步，新邮件到达有延迟。
+- **IMAP IDLE 只在前台保持**：前台靠 IDLE 近实时收信（30 秒轮询兜底），页面隐藏/锁屏后断开，后台靠 WorkScheduler 每 30 分钟同步，新邮件到达有延迟。
 - **关键词搜索只作用于已加载窗口**：未读/附件/星标筛选已下推到 SQL 并参与分页，但搜索框的关键词仍只在已加载的窗口里过滤。
 - **列表时间不带年份**：更早的邮件在列表里显示 `M月D日`（今天 `HH:mm`、昨天显示「昨天」），跨年的同月日邮件在列表上无法区分（详情页带年份）。
 - **部分文件夹不双向同步**：只有收件箱、垃圾邮件和垃圾箱参与同步，已发送、草稿、归档保持本地状态。

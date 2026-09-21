@@ -8,6 +8,7 @@ import { AccountServerSettings, AuthenticationMethod, ConnectionSecurity, MailPr
 import { DiscoveryResult, MailServerDiscovery } from '../service/MailServerDiscovery';
 import { MailServerProbe, ProbeResult } from '../service/MailServerProbe';
 import { MailNotificationService } from '../service/MailNotificationService';
+import { MailAccountSyncService } from '../service/MailAccountSyncService';
 import { describeError } from '../service/ErrorFormatter';
 import { OAuthCredential, OAuthService } from '../service/OAuthService';
 import { isOAuthProviderConfigured } from '../config/OAuthClientConfig';
@@ -315,8 +316,12 @@ struct AddAccount {
         return;
       }
       const name: string = this.displayName.trim().length > 0 ? this.displayName : provider.name;
-      await this.repository.addAccount(new EmailAccount(`account_${Date.now()}`, this.email.trim(), name,
-        provider.type, provider.color), storedCredential, settings);
+      const account: EmailAccount = new EmailAccount(`account_${Date.now()}`, this.email.trim(), name,
+        provider.type, provider.color);
+      await this.repository.addAccount(account, storedCredential, settings);
+      // 账户添加成功立刻发起首次同步：回到收件箱邮件已开始流入，不必等下一轮定时同步。
+      // 单飞表保证它与前台定时同步不冲突；失败由下一轮同步兜底，这里不阻塞导航。
+      new MailAccountSyncService(this.repository).synchronize(account).catch(() => {});
       this.connectionStatus = '账户创建成功';
       showToast('邮箱账户已添加');
       // 场景化申请：账户刚添加成功，此时申请通知权限并说明用途（用于新邮件提醒）。

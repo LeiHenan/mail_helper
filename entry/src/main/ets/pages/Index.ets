@@ -3,6 +3,7 @@ import { MailSummaryQuery } from '../data/MailRepository';
 import { EmailAccount, MailFolder, MailFolderCounts, MailMessage } from '../model/MailModels';
 import { ThunderbirdTheme } from '../theme/ThunderbirdTheme';
 import { AccountSyncResult, MailAccountSyncService } from '../service/MailAccountSyncService';
+import { ImapIdleService } from '../service/ImapIdleService';
 import { MailNotificationService } from '../service/MailNotificationService';
 import { MailSendService, SendDeliveryResult } from '../service/MailSendService';
 import { MessageCard } from '../common/components/MessageCard';
@@ -41,7 +42,7 @@ class UndoEntry {
 @Entry
 @Component
 struct Index {
-  private readonly foregroundSyncInterval: number = 60 * 1000;
+  private readonly foregroundSyncInterval: number = 30 * 1000;
   private readonly pageSize: number = 50;
   private readonly searchDebounceMs: number = 300;
   // 骨架屏占位行（6 行，静态不闪动）。
@@ -50,6 +51,7 @@ struct Index {
   private readonly drawerHiddenOffset: number = -340;
   private repository: LocalMailRepository = LocalMailRepository.shared();
   private syncService: MailAccountSyncService = new MailAccountSyncService(this.repository);
+  private idleService: ImapIdleService = new ImapIdleService(this.repository);
   private sendService: MailSendService = new MailSendService(this.repository);
   private notificationService: MailNotificationService = new MailNotificationService();
   private autoSyncTimer: number = -1;
@@ -117,7 +119,26 @@ struct Index {
   aboutToAppear(): void {
     // 冷启动续投发件箱：尽力而为，不阻塞首屏，也不触发整表同步。
     this.deliverPendingSends();
+    // 网络从不可用恢复时立即补一次增量同步（runAutomaticSync 自带节流，重复事件不会叠加同步）。
+    if (!this.netConnection) {
+      this.netConnection = connection.createNetConnection();
+    }
+    this.netConnection.on('netAvailable', this.onNetworkAvailable);
   }
+
+  aboutToDisappear(): void {
+    if (this.netConnection) {
+      // 该 SDK 的 NetConnection 只提供 unregister（注销此连接上的全部监听），无按回调 off。
+      this.netConnection.unregister(() => {});
+    }
+  }
+
+  private netConnection?: connection.NetConnection = undefined;
+
+  private readonly onNetworkAvailable: (netHandle: connection.NetHandle) => void =
+    (_netHandle: connection.NetHandle): void => {
+      this.runAutomaticSync().catch(() => {});
+    }
 
   // 抽屉 / 多选态优先吃掉返回事件，避免直接退出页面。
   onBackPress(): boolean {
@@ -146,6 +167,7 @@ struct Index {
 
   onPageHide(): void {
     this.stopForegroundSync();
+    this.idleService.stopAll();
   }
 
   private ensureRepositoryReady(): Promise<void> {
@@ -190,6 +212,10 @@ struct Index {
     await this.refreshMailboxState();
     await this.loadDisplaySettings();
     this.startForegroundSync();
+    // 打开收件箱 / 从后台回前台：立即补一次增量同步（runAutomaticSync 自带 15 秒节流与单飞去重）。
+    this.runAutomaticSync().catch(() => {});
+    // 前台 IMAP IDLE：新邮件事件秒级触达；stopAll 在 onPageHide，后台不挂长连接。
+    this.idleService.start(this.accounts);
   }
 
   private startForegroundSync(): void {
@@ -773,11 +799,16 @@ struct Index {
       let successCount: number = 0;
       let mailCount: number = 0;
       const failures: string[] = [];
+      // 用户正在看的 SPAM/TRASH 文件夹本轮不受节流限制，保证下拉能立刻刷新。
+      const priorityFolder: MailFolder | undefined =
+        this.selectedFolder === MailFolder.SPAM || this.selectedFolder === MailFolder.TRASH ?
+          this.selectedFolder : undefined;
       for (let index: number = 0; index < targets.length; index++) {
         if (showFeedback) {
           this.syncStatusText = `正在同步 ${targets[index].displayName}`;
         }
-        const result: AccountSyncResult = await this.syncService.synchronize(targets[index]);
+        const result: AccountSyncResult =
+          await this.syncService.synchronize(targets[index], undefined, priorityFolder);
         if (result.errorMessage.length === 0) {
           successCount++;
           mailCount += result.receivedCount;

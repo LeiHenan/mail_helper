@@ -38,6 +38,8 @@ export class AccountSyncResult {
 const inFlightSyncs: Map<string, Promise<AccountSyncResult>> = new Map<string, Promise<AccountSyncResult>>();
 
 export class MailAccountSyncService {
+  // SPAM/TRASH 的最小检查间隔：未点名（非用户正在看的文件夹）时每 10 分钟才查一轮。
+  private static readonly FOLDER_CHECK_INTERVAL_MS: number = 10 * 60 * 1000;
   private repository: LocalMailRepository;
   private oauthService: OAuthService = new OAuthService();
   private sendService: MailSendService;
@@ -105,13 +107,16 @@ export class MailAccountSyncService {
   // 同一账户的同步单飞（与 pushPendingOperations/loadOlder 共用同一张表）：已有服务器操作在跑时
   // 本次直接跳过（skipped=true，errorMessage 为空，不会被 UI 当成失败），避免两个 IMAP 会话争抢
   // 同一账户的游标/文件夹状态。shouldCancel 由后台任务传入（onWorkStop 置位），用于在文件夹边界中断同步。
-  async synchronize(account: EmailAccount, shouldCancel?: () => boolean): Promise<AccountSyncResult> {
+  // priorityFolder 是用户正在看的文件夹：SPAM/TRASH 平时按间隔节流（见 FOLDER_CHECK_INTERVAL_MS），
+  // 被点名时本轮照常同步，避免"打开垃圾箱下拉却没反应"。
+  async synchronize(account: EmailAccount, shouldCancel?: () => boolean,
+    priorityFolder?: MailFolder): Promise<AccountSyncResult> {
     return this.runAccountExclusive(account,
-      (): Promise<AccountSyncResult> => this.runSynchronize(account, shouldCancel));
+      (): Promise<AccountSyncResult> => this.runSynchronize(account, shouldCancel, priorityFolder));
   }
 
   private async runSynchronize(account: EmailAccount,
-    shouldCancel?: () => boolean): Promise<AccountSyncResult> {
+    shouldCancel?: () => boolean, priorityFolder?: MailFolder): Promise<AccountSyncResult> {
     if (!account.syncEnabled) {
       return new AccountSyncResult(account.id, account.displayName, 0, '账户同步已暂停');
     }
@@ -145,6 +150,14 @@ export class MailAccountSyncService {
           break;
         }
         const folder: MailFolder = folders[folderIndex];
+        // SPAM/TRASH 变化远少于 INBOX，且每轮各要一次 SELECT + UID SEARCH：
+        // 未点名时节流到每 10 分钟检查一次（INBOX 每轮都查），省流量也缩短单轮耗时。
+        if (folder !== MailFolder.INBOX && folder !== priorityFolder &&
+          Date.now() - Number.parseInt(
+            await this.repository.getSetting(this.folderCheckKey(account.id, folder), '0'), 10)
+            < MailAccountSyncService.FOLDER_CHECK_INTERVAL_MS) {
+          continue;
+        }
         try {
           const initialized: boolean =
             (await this.repository.getSetting(this.stateKey('initialized', account.id, folder), 'false')) === 'true';
@@ -173,6 +186,7 @@ export class MailAccountSyncService {
             (savedUidValidity.length === 0 || savedUidValidity === page.uidValidity);
           await this.saveSyncState(account.id, folder, page,
             this.advanceCursor(page, savedLastUid, wasIncremental), wasIncremental);
+          await this.repository.setSetting(this.folderCheckKey(account.id, folder), `${Date.now()}`);
         } catch (error) {
           if (folder === MailFolder.INBOX) throw new Error(describeError(error));
           await this.repository.setSetting(`last_folder_error_${account.id}_${folder}`, describeError(error));
@@ -315,7 +329,8 @@ export class MailAccountSyncService {
     }
   }
 
-  private async resolveCredential(account: EmailAccount, settings: AccountServerSettings): Promise<string> {
+  // 解析账户当前可用凭据：密码类账户直接返回已存凭据；OAuth 账户必要时先刷新访问令牌并回写。
+  async resolveCredential(account: EmailAccount, settings: AccountServerSettings): Promise<string> {
     const storedCredential: string = await this.repository.readAccountCredential(account.id);
     if (storedCredential.length === 0 ||
       settings.incoming.authentication !== AuthenticationMethod.OAUTH2) {
@@ -353,6 +368,10 @@ export class MailAccountSyncService {
   private stateKey(name: string, accountId: string, folder: MailFolder): string {
     const version: string = name === 'history_complete' ? 'v3' : 'v2';
     return `sync_${name}_${version}_${accountId}_${folder}`;
+  }
+
+  private folderCheckKey(accountId: string, folder: MailFolder): string {
+    return `last_folder_check_${accountId}_${folder}`;
   }
 
   private isSynchronizedFolder(folder: MailFolder): boolean {

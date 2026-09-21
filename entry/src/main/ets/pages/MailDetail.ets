@@ -81,10 +81,10 @@ struct MailDetail {
         .replace(/url\(\s*(["']?)https?:\/\/[^)]*\)/gi, 'none');
     }
     html = html
-      .replace(/font-size\s*:\s*(?:[6-9]|1[0-3])(?:\.\d+)?px(?:\s*!important)?/gi,
-        'font-size:14px!important')
-      .replace(/font-size\s*:\s*(?:[4-9]|10)(?:\.\d+)?pt(?:\s*!important)?/gi,
-        'font-size:14px!important');
+      .replace(/font-size\s*:\s*(?:[6-9]|1[0-5])(?:\.\d+)?px(?:\s*!important)?/gi,
+        'font-size:16px!important')
+      .replace(/font-size\s*:\s*(?:[4-9]|1[01])(?:\.\d+)?pt(?:\s*!important)?/gi,
+        'font-size:16px!important');
     const responsiveStyle: string =
       '<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0,user-scalable=yes">' +
       '<style>' +
@@ -93,9 +93,9 @@ struct MailDetail {
       'margin:0!important;padding:0!important;background:transparent;overflow-x:hidden;' +
       'overflow-wrap:anywhere;word-break:normal;' +
       '-webkit-text-size-adjust:100%;box-sizing:border-box;}' +
-      'body{font-size:16px!important;line-height:1.6!important;}' +
-      'body p,body li,body td,body th{font-size:max(14px,1em)!important;line-height:1.6!important;}' +
-      'body span,body a{font-size:max(14px,1em)!important;}' +
+      'body{font-size:18px!important;line-height:1.65!important;}' +
+      'body p,body li,body td,body th{font-size:max(16px,1em)!important;line-height:1.65!important;}' +
+      'body span,body a{font-size:max(16px,1em)!important;}' +
       'table{width:100%!important;min-width:0!important;max-width:100%!important;' +
       'height:auto!important;min-height:0!important;table-layout:auto!important;border-collapse:collapse;}' +
       'tbody,tr,td,th,div,section,article,main,center{min-width:0!important;max-width:100%!important;' +
@@ -353,10 +353,10 @@ struct MailDetail {
           .fillColor($r('app.color.primary'))
       }
       Column({ space: 3 }) {
-        Text(attachment.name).fontSize(14).fontWeight(FontWeight.Medium).fontColor($r('app.color.onSurface'))
+        Text(attachment.name).fontSize(15).fontWeight(FontWeight.Medium).fontColor($r('app.color.onSurface'))
           .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
         Text(this.attachmentDetail(attachment))
-          .fontSize(12).fontColor($r('app.color.onSurfaceVariant'))
+          .fontSize(13).fontColor($r('app.color.onSurfaceVariant'))
       }.layoutWeight(1).alignItems(HorizontalAlign.Start)
       Button() {
         Image($r('app.media.ic_chevron_right')).width(22).height(22).objectFit(ImageFit.Contain).fillColor($r('app.color.outline'))
@@ -414,7 +414,7 @@ struct MailDetail {
           Column() {
             Row({ space: 10 }) {
               Text(this.message.subject)
-                .layoutWeight(1).fontSize(20).lineHeight(27).fontWeight(FontWeight.Bold)
+                .layoutWeight(1).fontSize(22).lineHeight(29).fontWeight(FontWeight.Bold)
                 .fontColor($r('app.color.onSurface'))
               Button() {
                 Image(this.message.isStarred ? $r('app.media.ic_star_filled') : $r('app.media.ic_star'))
@@ -433,17 +433,17 @@ struct MailDetail {
               }
               Column({ space: 4 }) {
                 Row() {
-                  Text(this.message.sender.name).layoutWeight(1).fontSize(15)
+                  Text(this.message.sender.name).layoutWeight(1).fontSize(16)
                     .fontWeight(FontWeight.Bold).fontColor($r('app.color.onSurface')).maxLines(1)
                   Text(MailDateGroup.formatDetailTime(this.message.receivedAtMs))
-                    .fontSize(12).fontColor($r('app.color.onSurfaceVariant'))
+                    .fontSize(13).fontColor($r('app.color.onSurfaceVariant'))
                     .constraintSize({ maxWidth: 140 }).maxLines(1)
                     .textOverflow({ overflow: TextOverflow.Ellipsis }).textAlign(TextAlign.End)
                 }.width('100%')
-                Text(this.message.sender.address).fontSize(12).fontColor($r('app.color.onSurfaceVariant')).maxLines(1)
+                Text(this.message.sender.address).fontSize(13).fontColor($r('app.color.onSurfaceVariant')).maxLines(1)
                 Row({ space: 4 }) {
                   Text(this.showRecipientDetails ? this.recipientDetailText() : '收件人：我')
-                    .fontSize(12).fontColor($r('app.color.onSurfaceVariant'))
+                    .fontSize(13).fontColor($r('app.color.onSurfaceVariant'))
                     .maxLines(this.showRecipientDetails ? 3 : 1)
                   Image(this.showRecipientDetails ? $r('app.media.ic_chevron_up') :
                     $r('app.media.ic_chevron_down'))
@@ -460,9 +460,9 @@ struct MailDetail {
                 Row({ space: 8 }) {
                   Image($r('app.media.ic_image')).width(18).height(18).objectFit(ImageFit.Contain)
                     .fillColor($r('app.color.onSurfaceVariant'))
-                  Text('已阻止远程图片').layoutWeight(1).fontSize(12)
+                  Text('已阻止远程图片').layoutWeight(1).fontSize(13)
                     .fontColor($r('app.color.onSurfaceVariant'))
-                  Text('显示图片').fontSize(12).fontWeight(FontWeight.Medium).fontColor($r('app.color.primary'))
+                  Text('显示图片').fontSize(13).fontWeight(FontWeight.Medium).fontColor($r('app.color.primary'))
                 }
                 .width('100%').height(44).padding({ left: 10, right: 10 })
                 .backgroundColor($r('app.color.surfaceContainer')).borderRadius(8)
@@ -472,7 +472,7 @@ struct MailDetail {
                 .margin({ bottom: 20 })
             } else {
               Text(this.visibleBody())
-                .width('100%').fontSize(15).lineHeight(25).fontColor($r('app.color.onSurface'))
+                .width('100%').fontSize(17).lineHeight(28).fontColor($r('app.color.onSurface'))
                 .margin({ bottom: 24 })
             }
 
@@ -492,7 +492,7 @@ struct MailDetail {
                 Row() {
                   Rect().width(3).height(84).fill($r('app.color.outlineVariant')).margin({ right: 12 })
                   Text(this.quotedText())
-                    .layoutWeight(1).fontSize(13).lineHeight(21).fontColor($r('app.color.onSurfaceVariant'))
+                    .layoutWeight(1).fontSize(15).lineHeight(24).fontColor($r('app.color.onSurfaceVariant'))
                 }.width('100%').margin({ bottom: 24 })
               }
             }

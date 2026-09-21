@@ -12,7 +12,8 @@ export class ProtocolSocket {
   private timeoutId: number = -1;
   private idleTimeoutId: number = -1;
   private closed: boolean = false;
-  private readonly readIdleTimeoutMs: number = 60000;
+  // 读数据空闲超时：普通命令 60 秒无新数据视为连接僵死；IMAP IDLE 期间由调用方调大。
+  readIdleTimeoutMs: number = 60000;
   private readonly maximumBufferSize: number = 32 * 1024 * 1024;
 
   private addressFamily(address: string): number {
@@ -229,6 +230,9 @@ export class ProtocolSocket {
 
   async close(): Promise<void> {
     this.closed = true;
+    // 有等待中的命令（如 IDLE 事件等待）时先拒绝它，调用方才能立刻收尾退出，
+    // 而不是挂在一个永远不会 settle 的 Promise 上。
+    this.failPending(new Error('连接已关闭'));
     this.clearWaiter();
     this.buffer = '';
     if (this.connection) {

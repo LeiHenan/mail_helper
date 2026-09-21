@@ -396,6 +396,9 @@ struct Compose {
   private async flushOutbox(accountId: string): Promise<void> {
     try {
       const result: SendDeliveryResult = await this.sendService.deliverPendingSends(accountId);
+      if (result.delivered > 0) {
+        showToast('邮件已发送');
+      }
       if (result.firstError.length > 0) {
         showToast(`邮件暂未发出，将自动重试：${result.firstError}`);
       }

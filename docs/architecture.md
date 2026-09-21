@@ -24,7 +24,7 @@ MailAccountSyncService ──► ImapClient ──► ProtocolSocket（TLS / TCP
 MailSendService ────────► SmtpClient  ──► ProtocolSocket
 ```
 
-页面刷新路径：`Index` 从 RDB 按键集（keyset）分页读摘要（每页 50 条，游标是上一页末行的 `sort_order`/`id`），同时按 60 秒周期调用 `MailAccountSyncService.synchronize()`，每同步完一个账户只刷新计数并把窗口头部的新邮件合并进来（不整窗替换、不动游标）；切文件夹 / 换账户 / 改筛选 / 下拉刷新才整窗替换，发布时同一封邮件的行 key 不变，`LazyForEach` 会复用已有组件。翻页加载更早的邮件走末尾追加路径，只对新增区间发通知。
+页面刷新路径：`Index` 从 RDB 按键集（keyset）分页读摘要（每页 50 条，游标是上一页末行的 `sort_order`/`id`），同时按 30 秒周期调用 `MailAccountSyncService.synchronize()`；前台另有 `ImapIdleService` 为每个启用同步的账户挂一条 IMAP IDLE 长连接，新邮件事件秒级触发增量同步（页面隐藏即全部拆除，不支持 IDLE 或连续失败时让位给轮询）；打开收件箱、从后台回前台、账户添加成功、网络恢复时也会立即补一次增量同步。每同步完一个账户只刷新计数并把窗口头部的新邮件合并进来（不整窗替换、不动游标）；切文件夹 / 换账户 / 改筛选 / 下拉刷新才整窗替换，发布时同一封邮件的行 key 不变，`LazyForEach` 会复用已有组件。翻页加载更早的邮件走末尾追加路径，只对新增区间发通知。已初始化文件夹的增量同步走 `UID SEARCH UID <last_uid>:*`，不做全量 `SEARCH ALL`；SPAM/TRASH 未点名时每 10 分钟才检查一轮（用户正在看时不受限）。
 
 ## 客户端模块
 
@@ -124,7 +124,7 @@ MailSendService ────────► SmtpClient  ──► ProtocolSocket
 
 ## 已知限制
 
-- 没有 IMAP IDLE：前台 60 秒轮询、后台 WorkScheduler 30 分钟同步，新邮件有延迟。
+- IMAP IDLE 只在前台保持（页面隐藏即断开）；后台仍靠 WorkScheduler 30 分钟同步，锁屏/后台时新邮件有延迟。
 - 未读/附件筛选只作用于当前已加载的窗口；星标走服务器侧查询。
 - 日期分组依赖展示字符串，跨年等边界情况只能近似判断。
 - 已发送、草稿、归档不做双向同步。
@@ -135,6 +135,6 @@ MailSendService ────────► SmtpClient  ──► ProtocolSocket
 ## 后续可选方向
 
 1. 把 MIME 解析与批量同步移到 TaskPool，长同步期间进一步降低主线程占用。
-2. 用 IMAP IDLE 或系统推送替代轮询，减少延迟与耗电。
+2. 用系统推送替代后台轮询（前台已有 IMAP IDLE），进一步减少锁屏后的延迟与耗电。
 3. 接入 `MailBackendContract` 形状的服务端，由服务端承担 IDLE/Gmail API/Graph 与推送，客户端只保留本地缓存与离线队列。
 4. 补齐发送失败的重发入口，并让更多文件夹参与双向同步。
